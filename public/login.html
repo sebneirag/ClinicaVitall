@@ -1,55 +1,70 @@
 <!DOCTYPE html>
-<html lang="es">
+<html lang="es" data-bs-theme="dark">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Clínica Vital</title>
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
-    <style>
-        body { background-color: #121212; display: flex; align-items: center; justify-content: center; height: 100vh; color: #000; }
-        .card-login { width: 100%; max-width: 400px; padding: 30px; border-radius: 12px; background: #ffffff; border: 2px solid #333; box-shadow: 0 8px 24px rgba(255,255,255,0.2); }
-    </style>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Acceso al Sistema - Clínica Vital SpA</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+  <style>
+    body { background-color: #121212; min-height: 100vh; display: flex; align-items: center; justify-content: center; }
+    .card-login { width: 100%; max-width: 400px; padding: 25px; border-radius: 12px; border: 1px solid #333; background-color: #1e1e1e; }
+  </style>
 </head>
 <body>
-    <div class="card card-login">
-        <div class="text-center mb-4">
-            <h2 class="fw-bold text-dark mb-1">Clínica Vital</h2>
-            <p class="text-muted small fw-bold">Acceso Exclusivo para Personal Autorizado</p>
-        </div>
-        <form id="formLogin">
-            <div class="mb-3">
-                <label class="form-label fw-bold text-dark">Usuario Admin</label>
-                <input type="text" id="usuario" class="form-control border-dark" value="admin" required>
-            </div>
-            <div class="mb-3">
-                <label class="form-label fw-bold text-dark">Contraseña</label>
-                <input type="password" id="password" class="form-control border-dark" value="admin123" required>
-            </div>
-            <button type="submit" class="btn btn-dark w-100 py-2 fw-bold text-uppercase">Ingresar al Sistema</button>
-        </form>
+
+  <div class="card-login text-center shadow-lg">
+    <h3 class="fw-bold mb-1 text-light">Clínica Vital SpA</h3>
+    <p class="text-secondary small mb-4">Gestión de Inventarios y Fichas Médicas QR</p>
+
+    <div id="alert-error" class="alert alert-danger d-none" role="alert">
+      Usuario o contraseña incorrectos.
     </div>
 
-    <script>
-        sessionStorage.clear();
+    <form id="login-form">
+      <div class="form-floating mb-3 text-start">
+        <input type="text" class="form-control bg-dark text-light border-secondary" id="username" placeholder="Usuario" required>
+        <label for="username" class="text-secondary">Usuario</label>
+      </div>
 
-        document.getElementById('formLogin').addEventListener('submit', async (e) => {
-            e.preventDefault();
-            const res = await fetch('/api/login', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    usuario: document.getElementById('usuario').value,
-                    password: document.getElementById('password').value
-                })
-            });
-            const data = await res.json();
-            if (data.success) {
-                sessionStorage.setItem('session', 'active');
-                window.location.href = 'index.html';
-            } else {
-                alert(data.mensaje);
-            }
+      <div class="form-floating mb-4 text-start">
+        <input type="password" class="form-control bg-dark text-light border-secondary" id="password" placeholder="Contraseña" required>
+        <label for="password" class="text-secondary">Contraseña</label>
+      </div>
+
+      <button type="submit" class="btn btn-light w-100 py-2 fw-bold">Iniciar Sesión</button>
+    </form>
+    
+    <div class="mt-4 text-muted small">
+      Credenciales demo: <code>admin</code> / <code>admin123</code>
+    </div>
+  </div>
+
+  <script>
+    sessionStorage.clear();
+
+    document.getElementById('login-form').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const usernameInput = document.getElementById('username').value;
+      const passwordInput = document.getElementById('password').value;
+
+      try {
+        const res = await fetch('/api/login', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ username: usernameInput, password: passwordInput })
         });
-    </script>
+
+        const data = await res.json();
+        if (data.success) {
+          sessionStorage.setItem('authenticated', 'true');
+          window.location.href = 'index.html';
+        } else {
+          document.getElementById('alert-error').classList.remove('d-none');
+        }
+      } catch (error) {
+        console.error('Error al iniciar sesión:', error);
+      }
+    });
+  </script>
 </body>
 </html>

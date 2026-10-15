@@ -1,232 +1,318 @@
-// Validar Sesión al cargar la página (sessionStorage)
-if (sessionStorage.getItem('session') !== 'active') {
-    window.location.href = 'login.html';
+// Validar Autenticación de Sesión
+if (!sessionStorage.getItem('authenticated')) {
+  window.location.href = 'login.html';
 }
 
-document.getElementById('btnLogout').addEventListener('click', () => {
-    sessionStorage.clear();
-    window.location.href = 'login.html';
+document.getElementById('btn-logout').addEventListener('click', () => {
+  sessionStorage.clear();
+  window.location.href = 'login.html';
 });
 
-// Cargar Inventario
+// Identificador estricto de categoría
+function esMedicamento(item) {
+  if (item.categoria && item.categoria.toLowerCase() === 'medicamento') return true;
+  if (item.categoria && item.categoria.toLowerCase() === 'aseo') return false;
+  
+  const nom = item.nombre.toLowerCase();
+  return nom.includes('mg') || nom.includes('sertralina') || nom.includes('fluoxetina') || 
+         nom.includes('clonazepam') || nom.includes('quetiapina') || nom.includes('escitalopram') || 
+         nom.includes('amitriptilina') || nom.includes('venlafaxina');
+}
+
+// Generación de Códigos QR
+async function generarCodigosQR() {
+  try {
+    const res = await fetch('/api/config');
+    const config = await res.json();
+    
+    const ip = config.ip;
+    const port = config.port;
+
+    const urlFicha1 = `http://${ip}:${port}/ficha/1`;
+    const urlFicha2 = `http://${ip}:${port}/ficha/2`;
+
+    const qr1Url = `https://api.qrserver.com/v1/create-qr-code/?size=160x160&data=${encodeURIComponent(urlFicha1)}`;
+    const qr2Url = `https://api.qrserver.com/v1/create-qr-code/?size=160x160&data=${encodeURIComponent(urlFicha2)}`;
+
+    const imgQr1 = document.getElementById('qr-residente-1');
+    const imgQr2 = document.getElementById('qr-residente-2');
+    const link1 = document.getElementById('link-directo-1');
+    const link2 = document.getElementById('link-directo-2');
+
+    if (imgQr1) imgQr1.src = qr1Url;
+    if (imgQr2) imgQr2.src = qr2Url;
+    if (link1) link1.href = `/ficha/1`;
+    if (link2) link2.href = `/ficha/2`;
+
+  } catch (error) {
+    console.error('Error al generar los códigos QR:', error);
+  }
+}
+
+// Poblar los desplegables ÚNICAMENTE con los productos que existen en la BD + Opción Nuevo
+function poblarSelects(itemsEnBD) {
+  const selectMed = document.getElementById('med-select');
+  const selectAseo = document.getElementById('aseo-select');
+
+  if (!selectMed || !selectAseo) return;
+
+  const currentMed = selectMed.value;
+  const currentAseo = selectAseo.value;
+
+  selectMed.innerHTML = `<option value="">-- Seleccionar medicamento --</option>`;
+  selectAseo.innerHTML = `<option value="">-- Seleccionar artículo de aseo --</option>`;
+
+  // A) MEDICAMENTOS (Solo los únicos de la BD)
+  const medicamentos = itemsEnBD.filter(item => esMedicamento(item));
+  medicamentos.forEach(m => {
+    const opt = document.createElement('option');
+    opt.value = m.nombre;
+    opt.dataset.pauta = m.pauta || '';
+    opt.textContent = `${m.nombre} (Stock actual: ${m.stock} cajas)`;
+    selectMed.appendChild(opt);
+  });
+
+  const optMedNuevo = document.createElement('option');
+  optMedNuevo.value = '__NUEVO__';
+  optMedNuevo.textContent = '➕ Registrar NUEVO medicamento NO listado...';
+  selectMed.appendChild(optMedNuevo);
+
+  // B) ARTÍCULOS DE ASEO (Solo los únicos de la BD)
+  const aseoItems = itemsEnBD.filter(item => !esMedicamento(item));
+  aseoItems.forEach(a => {
+    const opt = document.createElement('option');
+    opt.value = a.nombre;
+    opt.dataset.pauta = a.pauta || '';
+    opt.textContent = `${a.nombre} (Stock actual: ${a.stock} unidades)`;
+    selectAseo.appendChild(opt);
+  });
+
+  const optAseoNuevo = document.createElement('option');
+  optAseoNuevo.value = '__NUEVO__';
+  optAseoNuevo.textContent = '➕ Registrar NUEVO artículo NO listado...';
+  selectAseo.appendChild(optAseoNuevo);
+
+  if (currentMed) selectMed.value = currentMed;
+  if (currentAseo) selectAseo.value = currentAseo;
+}
+
+// Control de campos al cambiar de opción en modales
+document.getElementById('med-select').addEventListener('change', (e) => {
+  const val = e.target.value;
+  const divNuevo = document.getElementById('div-med-nuevo');
+  const inputNuevo = document.getElementById('med-nombre-nuevo');
+  const inputPauta = document.getElementById('med-pauta');
+
+  if (val === '__NUEVO__') {
+    divNuevo.style.display = 'block';
+    inputNuevo.required = true;
+    inputNuevo.value = '';
+    inputPauta.value = 'Mañana: 1, Tarde: 0, Noche: 1 (sueño), SOS: 1';
+  } else {
+    divNuevo.style.display = 'none';
+    inputNuevo.required = false;
+    const opt = e.target.options[e.target.selectedIndex];
+    if (opt && opt.dataset.pauta) {
+      inputPauta.value = opt.dataset.pauta;
+    }
+  }
+});
+
+document.getElementById('aseo-select').addEventListener('change', (e) => {
+  const val = e.target.value;
+  const divNuevo = document.getElementById('div-aseo-nuevo');
+  const inputNuevo = document.getElementById('aseo-nombre-nuevo');
+  const inputPauta = document.getElementById('aseo-pauta');
+
+  if (val === '__NUEVO__') {
+    divNuevo.style.display = 'block';
+    inputNuevo.required = true;
+    inputNuevo.value = '';
+    inputPauta.value = 'Higienización e insumos de limpieza';
+  } else {
+    divNuevo.style.display = 'none';
+    inputNuevo.required = false;
+    const opt = e.target.options[e.target.selectedIndex];
+    if (opt && opt.dataset.pauta) {
+      inputPauta.value = opt.dataset.pauta;
+    }
+  }
+});
+
+// Cargar e Imprimir el Inventario Único desde SQLite
 async function cargarInventario() {
-    try {
-        const res = await fetch('/api/inventario');
-        const items = await res.json();
+  try {
+    const res = await fetch('/api/inventario');
+    const items = await res.json();
 
-        const tablaMed = document.getElementById('tablaMedicamentos');
-        const tablaAseo = document.getElementById('tablaAseo');
+    const tablaMed = document.getElementById('tabla-medicamentos');
+    const tablaAseo = document.getElementById('tabla-aseo');
 
-        tablaMed.innerHTML = '';
-        tablaAseo.innerHTML = '';
+    tablaMed.innerHTML = '';
+    tablaAseo.innerHTML = '';
 
-        items.forEach(item => {
-            const badgeClass = item.stock > 5 ? 'bg-dark text-white' : (item.stock > 0 ? 'bg-warning text-dark' : 'bg-danger text-white');
-            const row = `
-                <tr>
-                    <td class="fw-bold text-dark">${item.nombre}</td>
-                    <td><span class="badge ${badgeClass} fs-6 px-3 py-2">${item.stock} ${item.unidad_medida}</span></td>
-                    <td class="text-secondary fw-semibold">${item.detalle}</td>
-                    <td>
-                        <button class="btn btn-warning btn-sm me-2 fw-bold text-dark border-dark" onclick="usarItem(${item.id})" ${item.stock === 0 ? 'disabled' : ''}>
-                            - Usar 1 ${item.unidad_medida.slice(0, -1)}
-                        </button>
-                        <button class="btn btn-danger btn-sm fw-bold border-dark" onclick="eliminarItem(${item.id})">
-                            🗑️ Eliminar
-                        </button>
-                    </td>
-                </tr>
-            `;
-            if (item.tipo === 'medicamento') tablaMed.innerHTML += row;
-            else tablaAseo.innerHTML += row;
-        });
-    } catch (err) {
-        console.error("Error al cargar inventario:", err);
-    }
+    // Poblar las listas desplegables
+    poblarSelects(items);
+
+    items.forEach(item => {
+      const isMed = esMedicamento(item);
+      const unidadLabel = isMed ? 'cajas' : 'unidades';
+
+      const badgeColor = item.stock > 0 ? 'bg-success' : 'bg-danger';
+      const badgeTexto = item.stock > 0 ? `${item.stock} ${unidadLabel}` : 'Agotado (0)';
+
+      const fila = `
+        <tr>
+          <td class="fw-bold text-light">${item.nombre}</td>
+          <td><span class="badge ${badgeColor} fs-6">${badgeTexto}</span></td>
+          <td class="small text-secondary">${item.pauta || 'N/A'}</td>
+          <td class="text-end">
+            <button class="btn btn-warning btn-sm fw-bold me-1" onclick="usarUnidades(${item.id}, 1)" ${item.stock === 0 ? 'disabled' : ''}>
+              - Usar 1
+            </button>
+            <button class="btn btn-outline-warning btn-sm fw-bold" onclick="usarUnidades(${item.id}, 5)" ${item.stock === 0 ? 'disabled' : ''}>
+              - Usar 5
+            </button>
+          </td>
+        </tr>
+      `;
+
+      if (isMed) {
+        tablaMed.innerHTML += fila;
+      } else {
+        tablaAseo.innerHTML += fila;
+      }
+    });
+
+  } catch (error) {
+    console.error('Error al cargar inventario:', error);
+  }
 }
 
-// Descontar 1 unidad/caja
-async function usarItem(id) {
+// Cargar Personal de Turno
+async function cargarPersonal() {
+  try {
+    const res = await fetch('/api/personal');
+    const lista = await res.json();
+
+    const tabla = document.getElementById('tabla-personal');
+    tabla.innerHTML = '';
+
+    lista.forEach(p => {
+      tabla.innerHTML += `
+        <tr>
+          <td class="fw-bold text-light">${p.nombre}</td>
+          <td><span class="badge bg-secondary">${p.rol}</span></td>
+          <td class="small text-secondary">${p.area}</td>
+          <td class="small">${p.horario}</td>
+          <td class="small text-warning">🍎 ${p.colacion}</td>
+          <td><span class="badge bg-success">${p.estado}</span></td>
+        </tr>
+      `;
+    });
+  } catch (error) {
+    console.error('Error al cargar personal:', error);
+  }
+}
+
+// Descontar N unidades (1 o 5)
+async function usarUnidades(id, cantidad) {
+  try {
     const res = await fetch('/api/inventario/usar', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ id })
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ id, cantidad })
     });
     const data = await res.json();
-    if (data.success) {
-        cargarInventario();
-    } else {
-        alert(data.error || 'No queda stock disponible');
-    }
+    if (data.success) cargarInventario();
+  } catch (error) {
+    console.error('Error:', error);
+  }
 }
 
-// Eliminar producto
-async function eliminarItem(id) {
-    if (confirm('¿Estás seguro de eliminar este producto completamente del inventario?')) {
-        const res = await fetch(`/api/inventario/eliminar/${id}`, { method: 'DELETE' });
-        const data = await res.json();
-        if (data.success) {
-            cargarInventario();
-        } else {
-            alert(data.error);
-        }
-    }
-}
+// Guardar Medicamento
+document.getElementById('form-med').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const selectVal = document.getElementById('med-select').value;
+  let nombre = '';
 
-// Abrir Modal para Medicamentos o Aseo
-function abrirModalAgregar(tipo) {
-    document.getElementById('addTipo').value = tipo;
-    const modalTitulo = document.getElementById('modalAgregarTitulo');
-    const selectProducto = document.getElementById('selectProducto');
+  if (!selectVal) {
+    alert('Por favor seleccione un medicamento.');
+    return;
+  }
 
-    if (tipo === 'medicamento') {
-        modalTitulo.innerText = "Ingresar Stock de Medicamentos";
-        selectProducto.innerHTML = `
-            <option value="Sertralina 50mg|cajas|1 comp. diario en la Mañana (09:00 AM)">Sertralina 50mg (Cajas)</option>
-            <option value="Fluoxetina 20mg|cajas|1 comp. diario en la Tarde (16:00 PM)">Fluoxetina 20mg (Cajas)</option>
-            <option value="Escitalopram 10mg|cajas|Uso SOS (Crisis de ansiedad / agitación)">Escitalopram 10mg (Cajas SOS)</option>
-            <option value="Amitriptilina 25mg|cajas|1 comp. Noche para inducción del sueño (21:30 PM)">Amitriptilina 25mg (Cajas Sueño)</option>
-            <option value="Venlafaxina 75mg|cajas|1 comp. diario con Almuerzo (13:00 PM)">Venlafaxina 75mg (Cajas)</option>
-            <option value="custom">➕ Nuevo medicamento personalizado...</option>
-        `;
-    } else {
-        modalTitulo.innerText = "Ingresar Stock de Artículos de Aseo";
-        selectProducto.innerHTML = `
-            <option value="Clorhexidina Jabón 1L|bidones|Desinfectante corporal y superficies">Clorhexidina Jabón 1L (Bidones)</option>
-            <option value="Papel Toalla Interdoblado|paquetes|Paquete x 250 hojas">Papel Toalla Interdoblado (Paquetes)</option>
-            <option value="Cloro Concentrado 5L|bidones|Sanitización de pisos y baños">Cloro Concentrado 5L (Bidones)</option>
-            <option value="Detergente Clínico Multiuso|bidones|Bidón de 5 Litros">Detergente Clínico Multiuso (Bidones)</option>
-            <option value="Bolsas Basura Amarillas (Residuos)|paquetes|Paquete de 10 unidades">Bolsas Basura Amarillas (Paquetes)</option>
-            <option value="custom">➕ Nuevo artículo de aseo personalizado...</option>
-        `;
-    }
+  if (selectVal === '__NUEVO__') {
+    nombre = document.getElementById('med-nombre-nuevo').value.trim();
+    if (!nombre) return;
+  } else {
+    nombre = selectVal;
+  }
 
-    toggleNuevoProductoFields();
-    new bootstrap.Modal(document.getElementById('modalAgregar')).show();
-}
+  const cantidad = document.getElementById('med-cantidad').value;
+  const pauta = document.getElementById('med-pauta').value;
 
-// Mostrar u Ocultar campos personalizados
-function toggleNuevoProductoFields() {
-    const val = document.getElementById('selectProducto').value;
-    const fieldsCustom = document.getElementById('fieldsCustom');
-    if (val === 'custom') {
-        fieldsCustom.classList.remove('d-none');
-        document.getElementById('customNombre').setAttribute('required', 'true');
-        document.getElementById('customUnidad').setAttribute('required', 'true');
-        document.getElementById('customDetalle').setAttribute('required', 'true');
-    } else {
-        fieldsCustom.classList.add('d-none');
-        document.getElementById('customNombre').removeAttribute('required');
-        document.getElementById('customUnidad').removeAttribute('required');
-        document.getElementById('customDetalle').removeAttribute('required');
-    }
-}
+  const res = await fetch('/api/inventario/agregar', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ nombre, cantidad, categoria: 'medicamento', pauta })
+  });
 
-// Enviar formulario
-document.getElementById('formAgregar').addEventListener('submit', async (e) => {
-    e.preventDefault();
-    const tipo = document.getElementById('addTipo').value;
-    const selectVal = document.getElementById('selectProducto').value;
-    const cantidad = parseInt(document.getElementById('addStock').value);
-    let item = {};
+  const data = await res.json();
 
-    if (selectVal === 'custom') {
-        item = {
-            tipo: tipo,
-            nombre: document.getElementById('customNombre').value,
-            stock: cantidad,
-            unidad_medida: document.getElementById('customUnidad').value,
-            detalle: document.getElementById('customDetalle').value
-        };
-    } else {
-        const parts = selectVal.split('|');
-        item = {
-            tipo: tipo,
-            nombre: parts[0],
-            stock: cantidad,
-            unidad_medida: parts[1],
-            detalle: parts[2]
-        };
-    }
+  if (data.success) {
+    document.getElementById('med-select').value = '';
+    document.getElementById('div-med-nuevo').style.display = 'none';
+    document.getElementById('med-nombre-nuevo').value = '';
+    document.getElementById('med-nombre-nuevo').required = false;
 
-    const res = await fetch('/api/inventario/agregar', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(item)
-    });
-
-    const data = await res.json();
-    if (data.success) {
-        bootstrap.Modal.getInstance(document.getElementById('modalAgregar')).hide();
-        document.getElementById('formAgregar').reset();
-        document.getElementById('fieldsCustom').classList.add('d-none');
-        await cargarInventario();
-    } else {
-        alert(data.error || 'Error al agregar producto');
-    }
+    bootstrap.Modal.getInstance(document.getElementById('modalAgregarMedicamento')).hide();
+    await cargarInventario();
+  }
 });
 
-// Cargar Personal y Residentes con QR compatible con cualquier red / 4G / 5G
-async function cargarClinicaData() {
-    try {
-        const res = await fetch('/api/clinica-data');
-        const { personal, pacientes, localIp, port } = await res.json();
+// Guardar Artículo de Aseo
+document.getElementById('form-aseo').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const selectVal = document.getElementById('aseo-select').value;
+  let nombre = '';
 
-        // Render Personal
-        const containerPersonal = document.getElementById('cardsPersonal');
-        containerPersonal.innerHTML = personal.map(p => `
-            <div class="col-md-4 mb-3">
-                <div class="card border-dark shadow-sm h-100">
-                    <div class="card-body">
-                        <h5 class="card-title fw-bold text-dark">${p.nombre}</h5>
-                        <p class="card-text mb-1"><strong>Rol:</strong> ${p.rol}</p>
-                        <p class="card-text text-muted"><small>Turno: ${p.turno}</small></p>
-                    </div>
-                </div>
-            </div>
-        `).join('');
+  if (!selectVal) {
+    alert('Por favor seleccione un artículo.');
+    return;
+  }
 
-        // Render Pacientes con detección inteligente de URL pública vs local
-        const containerPacientes = document.getElementById('cardsPacientes');
-        containerPacientes.innerHTML = pacientes.map(pac => {
-            let fullTargetUrl;
+  if (selectVal === '__NUEVO__') {
+    nombre = document.getElementById('aseo-nombre-nuevo').value.trim();
+    if (!nombre) return;
+  } else {
+    nombre = selectVal;
+  }
 
-            // Si qr_info es una URL web completa (ej: https://i.postimg.cc/...), la usa directo
-            if (pac.qr_info.startsWith('http://') || pac.qr_info.startsWith('https://')) {
-                fullTargetUrl = pac.qr_info;
-            } else {
-                // Si es una ruta local, arma el enlace de red local
-                const pathEncoded = encodeURI(pac.qr_info);
-                fullTargetUrl = `http://${localIp}:${port}${pathEncoded}`;
-            }
+  const cantidad = document.getElementById('aseo-cantidad').value;
+  const pauta = document.getElementById('aseo-pauta').value;
 
-            const qrApiUrl = `https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(fullTargetUrl)}`;
+  const res = await fetch('/api/inventario/agregar', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ nombre, cantidad, categoria: 'aseo', pauta })
+  });
 
-            return `
-                <div class="col-md-6 mb-3">
-                    <div class="card border-dark shadow-sm p-3">
-                        <div class="d-flex align-items-center justify-content-between">
-                            <div style="flex: 1; padding-right: 15px;">
-                                <h5 class="fw-bold text-dark mb-1">${pac.nombre}</h5>
-                                <span class="badge bg-dark mb-2">${pac.habitacion}</span>
-                                <p class="mb-0 text-dark small"><strong>Pauta:</strong> ${pac.pauta_cuidados}</p>
-                            </div>
-                            <div class="text-center" style="width: 140px;">
-                                <a href="${fullTargetUrl}" target="_blank">
-                                    <img src="${qrApiUrl}" alt="QR Ficha ${pac.nombre}" class="img-fluid rounded border border-dark p-1 bg-white" title="Escanear con cámara para abrir Ficha Imagen">
-                                </a>
-                                <small class="d-block text-dark fw-bold mt-1" style="font-size:0.7rem;">Escanear QR con Celular</small>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            `;
-        }).join('');
-    } catch (err) {
-        console.error("Error al cargar datos de clínica:", err);
-    }
-}
+  const data = await res.json();
+
+  if (data.success) {
+    document.getElementById('aseo-select').value = '';
+    document.getElementById('div-aseo-nuevo').style.display = 'none';
+    document.getElementById('aseo-nombre-nuevo').value = '';
+    document.getElementById('aseo-nombre-nuevo').required = false;
+
+    bootstrap.Modal.getInstance(document.getElementById('modalAgregarAseo')).hide();
+    await cargarInventario();
+  }
+});
 
 // Inicialización
-cargarInventario();
-cargarClinicaData();
+document.addEventListener('DOMContentLoaded', () => {
+  generarCodigosQR();
+  cargarInventario();
+  cargarPersonal();
+});
