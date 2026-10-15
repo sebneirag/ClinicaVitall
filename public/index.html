@@ -1,0 +1,148 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Clínica Vital</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        body { background-color: #f8f9fa; color: #212529; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
+        .navbar-brand { font-weight: 800; letter-spacing: 0.5px; }
+        .card-custom { border: 2px solid #212529; border-radius: 10px; }
+        .table th { background-color: #212529; color: #ffffff; }
+    </style>
+</head>
+<body>
+
+    <!-- Navegación -->
+    <nav class="navbar navbar-expand-lg navbar-dark bg-dark shadow-sm">
+        <div class="container">
+            <a class="navbar-brand text-white" href="#">🏥 Clínica Vital</a>
+            <button class="btn btn-outline-light btn-sm fw-bold" id="btnLogout">Cerrar Sesión</button>
+        </div>
+    </nav>
+
+    <div class="container my-4">
+        <!-- Pestañas de Navegación -->
+        <ul class="nav nav-tabs mb-4 bg-white p-2 rounded border border-dark" id="myTab" role="tablist">
+            <li class="nav-item">
+                <button class="nav-link active fw-bold text-dark" id="inventario-tab" data-bs-toggle="tab" data-bs-target="#inventario" type="button">📦 Inventario (Medicamentos y Aseo)</button>
+            </li>
+            <li class="nav-item">
+                <button class="nav-link fw-bold text-dark" id="personal-tab" data-bs-toggle="tab" data-bs-target="#personal" type="button">👩‍⚕️ Personal y Residentes (Fichas QR)</button>
+            </li>
+        </ul>
+
+        <div class="tab-content" id="myTabContent">
+            
+            <!-- VENTANA 1: INVENTARIO -->
+            <div class="tab-pane fade show active" id="inventario">
+                
+                <!-- Tabla Medicamentos con Botón Verde -->
+                <div class="card card-custom mb-4 shadow-sm">
+                    <div class="card-header bg-dark text-white fw-bold d-flex justify-content-between align-items-center">
+                        <span>💊 Medicamentos (Antidepresivos)</span>
+                        <button class="btn btn-success btn-sm fw-bold text-white border-white" onclick="abrirModalAgregar('medicamento')">
+                            + Agregar / Sumar Medicamento
+                        </button>
+                    </div>
+                    <div class="card-body">
+                        <table class="table table-hover align-middle">
+                            <thead>
+                                <tr>
+                                    <th>Medicamento</th>
+                                    <th>Stock Disponible</th>
+                                    <th>Pauta / Indicación</th>
+                                    <th>Acción Diario</th>
+                                </tr>
+                            </thead>
+                            <tbody id="tablaMedicamentos"></tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <!-- Tabla Artículos de Aseo con Botón Verde -->
+                <div class="card card-custom shadow-sm">
+                    <div class="card-header bg-dark text-white fw-bold d-flex justify-content-between align-items-center">
+                        <span>🧹 Artículos de Aseo y Limpieza</span>
+                        <button class="btn btn-success btn-sm fw-bold text-white border-white" onclick="abrirModalAgregar('aseo')">
+                            + Agregar / Sumar Artículo de Aseo
+                        </button>
+                    </div>
+                    <div class="card-body">
+                        <table class="table table-hover align-middle">
+                            <thead>
+                                <tr>
+                                    <th>Artículo</th>
+                                    <th>Stock Disponible</th>
+                                    <th>Detalle</th>
+                                    <th>Acción Diario</th>
+                                </tr>
+                            </thead>
+                            <tbody id="tablaAseo"></tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <!-- VENTANA 2: PERSONAL Y RESIDENTES -->
+            <div class="tab-pane fade" id="personal">
+                <h4 class="fw-bold text-dark mb-3">Personal de Turno</h4>
+                <div class="row mb-4" id="cardsPersonal"></div>
+
+                <hr class="my-4 border-2 border-dark">
+
+                <h4 class="fw-bold text-dark mb-3">Residentes y Pautas de Cuidado (QR Exclusivo)</h4>
+                <div class="row" id="cardsPacientes"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal Dinámico para Agregar Stock -->
+    <div class="modal fade" id="modalAgregar" tabindex="-1">
+        <div class="modal-dialog">
+            <div class="modal-content border-dark">
+                <div class="modal-header bg-dark text-white">
+                    <h5 class="modal-title fw-bold" id="modalAgregarTitulo">Ingresar Stock</h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <form id="formAgregar">
+                        <input type="hidden" id="addTipo">
+
+                        <div class="mb-3">
+                            <label class="form-label fw-bold">Seleccionar Producto</label>
+                            <select id="selectProducto" class="form-select border-dark" onchange="toggleNuevoProductoFields()" required></select>
+                        </div>
+
+                        <!-- Campos para nuevo producto personalizado -->
+                        <div id="fieldsCustom" class="d-none">
+                            <div class="mb-3">
+                                <label class="form-label fw-bold">Nombre del Nuevo Producto</label>
+                                <input type="text" id="customNombre" class="form-control border-dark" placeholder="Ej: Paracetamol 500mg">
+                            </div>
+                            <div class="mb-3">
+                                <label class="form-label fw-bold">Unidad de Medida</label>
+                                <input type="text" id="customUnidad" class="form-control border-dark" placeholder="Ej: cajas, bidones, paquetes">
+                            </div>
+                            <div class="mb-3">
+                                <label class="form-label fw-bold">Detalle / Indicación</label>
+                                <input type="text" id="customDetalle" class="form-control border-dark" placeholder="Ej: Uso según pauta médica">
+                            </div>
+                        </div>
+
+                        <div class="mb-3">
+                            <label class="form-label fw-bold">Cantidad a Sumar al Stock</label>
+                            <input type="number" id="addStock" class="form-control border-dark" min="1" value="5" required>
+                        </div>
+                        <button type="submit" class="btn btn-success w-100 fw-bold border-dark">Confirmar e Ingresar a la Lista</button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="app.js"></script>
+</body>
+</html>
