@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Clínica Vital SpA</title>
+  <title>Proyecto APT - Clínica Vital SpA</title>
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
   <style>
     body { background-color: #121212; color: #e0e0e0; font-family: system-ui, -apple-system, sans-serif; }
@@ -13,6 +13,7 @@
     .card-custom { background-color: #1e1e1e; border: 1px solid #333; border-radius: 8px; }
     .table-dark-custom { --bs-table-bg: #1e1e1e; --bs-table-border-color: #333; }
     .qr-img { width: 140px; height: 140px; border-radius: 8px; border: 2px solid #444; background-color: #fff; padding: 4px; }
+    .admin-only { display: none; }
   </style>
 </head>
 <body>
@@ -20,27 +21,33 @@
   <!-- Navbar -->
   <nav class="navbar navbar-expand-lg navbar-dark mb-4 px-3">
     <div class="container-fluid">
-      <span class="navbar-brand fw-bold fs-4">Clínica Vital SpA <small class="fs-6 text-secondary fw-normal">| Fase 2 -PMV</small></span>
-      <button id="btn-logout" class="btn btn-outline-danger btn-sm">Cerrar Sesión</button>
+      <span class="navbar-brand fw-bold fs-4">Clínica Vital SpA <small id="lbl-rol" class="fs-6 text-secondary fw-normal">| Proyecto APT</small></span>
+      <div>
+        <button id="btn-reporte" class="btn btn-outline-info btn-sm me-2 admin-only" data-bs-toggle="modal" data-bs-target="#modalReporte">📊 Detalle Consumo Semanal</button>
+        <button id="btn-logout" class="btn btn-outline-danger btn-sm">Cerrar Sesión</button>
+      </div>
     </div>
   </nav>
 
   <div class="container pb-5">
 
-    <!-- Navegación por Pestañas -->
+    <!-- Navegación -->
     <ul class="nav nav-tabs mb-4" id="mainTabs" role="tablist">
       <li class="nav-item" role="presentation">
         <button class="nav-link active" id="inventario-tab" data-bs-toggle="tab" data-bs-target="#inventario-pane" type="button" role="tab">📦 Inventario de Insumos</button>
       </li>
       <li class="nav-item" role="presentation">
-        <button class="nav-link" id="residentes-tab" data-bs-toggle="tab" data-bs-target="#residentes-pane" type="button" role="tab">👥 Personal de Turno y Residentes (QR)</button>
+        <button class="nav-link" id="residentes-tab" data-bs-toggle="tab" data-bs-target="#residentes-pane" type="button" role="tab">👥 Personal de Turno del Día</button>
+      </li>
+      <li class="nav-item" role="presentation">
+        <button class="nav-link" id="pacientes-tab" data-bs-toggle="tab" data-bs-target="#pacientes-pane" type="button" role="tab">📋 Pacientes y Fichas QR</button>
       </li>
     </ul>
 
-    <!-- Contenido -->
+    <!-- Contenido Principal -->
     <div class="tab-content" id="mainTabsContent">
 
-      <!-- Pestaña 1: Inventarios Separados -->
+      <!-- Pestaña 1: Inventario -->
       <div class="tab-pane fade show active" id="inventario-pane" role="tabpanel">
 
         <!-- Tabla 1: Medicamentos -->
@@ -48,9 +55,9 @@
           <div class="d-flex justify-content-between align-items-center mb-3">
             <div>
               <h4 class="m-0 text-light fw-bold">💊 Medicamentos Antidepresivos y Psicofármacos</h4>
-              <small class="text-secondary">Gestión de stock expresado en cajas con pauta médica</small>
+              <small class="text-secondary">Descuento de stock en cajas según consumo del turno</small>
             </div>
-            <button class="btn btn-success fw-bold btn-sm px-3" data-bs-toggle="modal" data-bs-target="#modalAgregarMedicamento">+ Agregar Medicamento</button>
+            <button class="btn btn-success fw-bold btn-sm px-3 admin-only" data-bs-toggle="modal" data-bs-target="#modalAgregarMedicamento">+ Agregar Medicamento</button>
           </div>
 
           <div class="table-responsive">
@@ -63,9 +70,7 @@
                   <th class="text-end">Acciones de Uso</th>
                 </tr>
               </thead>
-              <tbody id="tabla-medicamentos">
-                <!-- Se llena dinámicamente -->
-              </tbody>
+              <tbody id="tabla-medicamentos"></tbody>
             </table>
           </div>
         </div>
@@ -75,9 +80,9 @@
           <div class="d-flex justify-content-between align-items-center mb-3">
             <div>
               <h4 class="m-0 text-light fw-bold">🧹 Artículos de Aseo e Higiene</h4>
-              <small class="text-secondary">Gestión de stock expresado en bidones, envases o paquetes</small>
+              <small class="text-secondary">Descuento de insumos de limpieza por unidad</small>
             </div>
-            <button class="btn btn-success fw-bold btn-sm px-3" data-bs-toggle="modal" data-bs-target="#modalAgregarAseo">+ Agregar Artículo de Aseo</button>
+            <button class="btn btn-success fw-bold btn-sm px-3 admin-only" data-bs-toggle="modal" data-bs-target="#modalAgregarAseo">+ Agregar Artículo de Aseo</button>
           </div>
 
           <div class="table-responsive">
@@ -90,26 +95,22 @@
                   <th class="text-end">Acciones de Uso</th>
                 </tr>
               </thead>
-              <tbody id="tabla-aseo">
-                <!-- Se llena dinámicamente -->
-              </tbody>
+              <tbody id="tabla-aseo"></tbody>
             </table>
           </div>
         </div>
 
       </div>
 
-      <!-- Pestaña 2: Personal y QR -->
+      <!-- Pestaña 2: Personal y Turnos del Día -->
       <div class="tab-pane fade" id="residentes-pane" role="tabpanel">
-
-        <!-- Personal de Turno del Día -->
         <div class="card-custom p-4 mb-4">
           <div class="d-flex justify-content-between align-items-center mb-3">
             <div>
-              <h4 class="text-light fw-bold mb-0">🕒 Personal de Turno del Día</h4>
-              <small class="text-secondary">Horarios del personal (TENS, Aseo, Cocina y Jefatura) con bloques de colación</small>
+              <h4 class="text-light fw-bold mb-0">🕒 Personal de Turno para Hoy (<span id="lbl-dia-actual">Cargando...</span>)</h4>
+              <small class="text-secondary">Visualización dinámica en tiempo real según el día de la semana</small>
             </div>
-            <span class="badge bg-success px-3 py-2">Turno Activo Hoy</span>
+            <span class="badge bg-success px-3 py-2">En Tiempo Real</span>
           </div>
 
           <div class="table-responsive">
@@ -121,20 +122,20 @@
                   <th>Área de Desempeño</th>
                   <th>Horario de Trabajo</th>
                   <th>Horario de Colación</th>
-                  <th>Estado</th>
+                  <th>Estado Hoy</th>
                 </tr>
               </thead>
-              <tbody id="tabla-personal">
-                <!-- Carga dinámica -->
-              </tbody>
+              <tbody id="tabla-personal"></tbody>
             </table>
           </div>
         </div>
+      </div>
 
-        <!-- Residentes y Fichas QR -->
+      <!-- Pestaña 3: Residentes y Fichas QR -->
+      <div class="tab-pane fade" id="pacientes-pane" role="tabpanel">
         <div class="card-custom p-4">
           <h4 class="text-light fw-bold mb-1">📋 Residentes y Fichas Médicas Digitales (QR)</h4>
-          <p class="text-secondary small mb-4">Escanee el código QR desde cualquier celular para ver y descargar la ficha médica.</p>
+          <p class="text-secondary small mb-4">Escanee el código QR desde cualquier celular para ver y descargar la ficha médica del paciente.</p>
 
           <div class="row g-4">
             <!-- Residente 1 -->
@@ -169,16 +170,45 @@
               </div>
             </div>
           </div>
-
         </div>
-
       </div>
 
     </div>
-
   </div>
 
-  <!-- Modal Agregar Medicamento -->
+  <!-- Modal Detalle Consumo Semanal (Solo Admin) -->
+  <div class="modal fade" id="modalReporte" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+      <div class="modal-content bg-dark text-light border-secondary">
+        <div class="modal-header border-secondary">
+          <h5 class="modal-title fw-bold">📊 Detalle de Consumo Semanal (Consolidado)</h5>
+          <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+        </div>
+        <div class="modal-body">
+          <p class="text-secondary small mb-3">Resumen acumulado de insumos descontados en los últimos 7 días:</p>
+          <div class="table-responsive">
+            <table class="table table-dark table-hover align-middle">
+              <thead>
+                <tr>
+                  <th>Producto</th>
+                  <th>Categoría</th>
+                  <th>Total Consumido</th>
+                  <th>Último Registro</th>
+                </tr>
+              </thead>
+              <tbody id="tabla-reporte-body"></tbody>
+            </table>
+          </div>
+        </div>
+        <div class="modal-footer border-secondary">
+          <button class="btn btn-outline-success btn-sm fw-bold" onclick="exportarCSV()">📥 Descargar CSV / Excel</button>
+          <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Cerrar</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal Agregar Medicamento (Admin) -->
   <div class="modal fade" id="modalAgregarMedicamento" tabindex="-1">
     <div class="modal-dialog">
       <div class="modal-content bg-dark text-light border-secondary">
@@ -190,36 +220,31 @@
           <div class="modal-body">
             <div class="mb-3">
               <label class="form-label text-secondary">Seleccionar Medicamento Existente</label>
-              <select id="med-select" class="form-select bg-black text-light border-secondary" required>
-                <option value="">-- Seleccionar medicamento --</option>
-              </select>
+              <select id="med-select" class="form-select bg-black text-light border-secondary" required></select>
             </div>
-
             <div id="div-med-nuevo" class="mb-3" style="display: none;">
-              <label class="form-label text-warning fw-bold">Nombre del Nuevo Medicamento</label>
-              <input type="text" id="med-nombre-nuevo" class="form-control bg-black text-light border-warning" placeholder="Ej: Paroxetina 20mg">
+              <label class="form-label text-warning fw-bold">Nombre del Nuevo Fármaco</label>
+              <input type="text" id="med-nombre-nuevo" class="form-control bg-black text-light border-warning">
             </div>
-
             <div class="mb-3">
               <label class="form-label text-secondary">Cantidad de Cajas a Sumar</label>
               <input type="number" id="med-cantidad" class="form-control bg-black text-light border-secondary" value="1" min="1" required>
             </div>
-
             <div class="mb-3">
-              <label class="form-label text-secondary">Pauta Horaria de Administración</label>
+              <label class="form-label text-secondary">Pauta Horaria</label>
               <input type="text" id="med-pauta" class="form-control bg-black text-light border-secondary" value="Mañana: 1, Tarde: 0, Noche: 1 (sueño), SOS: 1">
             </div>
           </div>
           <div class="modal-footer border-secondary">
             <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
-            <button type="submit" class="btn btn-success fw-bold">Guardar Medicamento</button>
+            <button type="submit" class="btn btn-success fw-bold">Guardar</button>
           </div>
         </form>
       </div>
     </div>
   </div>
 
-  <!-- Modal Agregar Artículo de Aseo -->
+  <!-- Modal Agregar Aseo (Admin) -->
   <div class="modal fade" id="modalAgregarAseo" tabindex="-1">
     <div class="modal-dialog">
       <div class="modal-content bg-dark text-light border-secondary">
@@ -231,29 +256,24 @@
           <div class="modal-body">
             <div class="mb-3">
               <label class="form-label text-secondary">Seleccionar Artículo Existente</label>
-              <select id="aseo-select" class="form-select bg-black text-light border-secondary" required>
-                <option value="">-- Seleccionar artículo de aseo --</option>
-              </select>
+              <select id="aseo-select" class="form-select bg-black text-light border-secondary" required></select>
             </div>
-
             <div id="div-aseo-nuevo" class="mb-3" style="display: none;">
               <label class="form-label text-warning fw-bold">Nombre del Nuevo Artículo</label>
-              <input type="text" id="aseo-nombre-nuevo" class="form-control bg-black text-light border-warning" placeholder="Ej: Alcohol Gel 1L">
+              <input type="text" id="aseo-nombre-nuevo" class="form-control bg-black text-light border-warning">
             </div>
-
             <div class="mb-3">
-              <label class="form-label text-secondary">Cantidad de Unidades a Sumar</label>
+              <label class="form-label text-secondary">Cantidad a Sumar</label>
               <input type="number" id="aseo-cantidad" class="form-control bg-black text-light border-secondary" value="1" min="1" required>
             </div>
-
             <div class="mb-3">
-              <label class="form-label text-secondary">Descripción de Uso / Aplicación</label>
+              <label class="form-label text-secondary">Uso y Aplicación</label>
               <input type="text" id="aseo-pauta" class="form-control bg-black text-light border-secondary" value="Higienización e insumos de limpieza">
             </div>
           </div>
           <div class="modal-footer border-secondary">
             <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
-            <button type="submit" class="btn btn-success fw-bold">Guardar Artículo</button>
+            <button type="submit" class="btn btn-success fw-bold">Guardar</button>
           </div>
         </form>
       </div>

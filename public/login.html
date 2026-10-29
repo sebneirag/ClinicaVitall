@@ -34,8 +34,9 @@
       <button type="submit" class="btn btn-light w-100 py-2 fw-bold">Iniciar Sesión</button>
     </form>
     
-    <div class="mt-4 text-muted small">
-      Credenciales demo: <code>admin</code> / <code>admin123</code>
+    <div class="mt-4 text-start text-muted small p-2 rounded bg-black">
+      <div><strong>Usuario TENS:</strong> <code>tens</code> / <code>tens123</code></div>
+      <div><strong>Administrador:</strong> <code>admin</code> / <code>admin123</code></div>
     </div>
   </div>
 
@@ -57,6 +58,7 @@
         const data = await res.json();
         if (data.success) {
           sessionStorage.setItem('authenticated', 'true');
+          sessionStorage.setItem('role', data.role);
           window.location.href = 'index.html';
         } else {
           document.getElementById('alert-error').classList.remove('d-none');
