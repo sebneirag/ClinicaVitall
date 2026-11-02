@@ -7,14 +7,14 @@
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
   <style>
     body { background-color: #121212; min-height: 100vh; display: flex; align-items: center; justify-content: center; }
-    .card-login { width: 100%; max-width: 400px; padding: 25px; border-radius: 12px; border: 1px solid #333; background-color: #1e1e1e; }
+    .card-login { width: 100%; max-width: 420px; padding: 25px; border-radius: 12px; border: 1px solid #333; background-color: #1e1e1e; }
   </style>
 </head>
 <body>
 
   <div class="card-login text-center shadow-lg">
     <h3 class="fw-bold mb-1 text-light">Clínica Vital SpA</h3>
-    <p class="text-secondary small mb-4">Gestión de Inventarios y Fichas Médicas QR</p>
+    <p class="text-secondary small mb-4">Gestión de Inventarios y Residencia de Menores</p>
 
     <div id="alert-error" class="alert alert-danger d-none" role="alert">
       Usuario o contraseña incorrectos.
@@ -35,8 +35,9 @@
     </form>
     
     <div class="mt-4 text-start text-muted small p-2 rounded bg-black">
-      <div><strong>Usuario TENS:</strong> <code>tens</code> / <code>tens123</code></div>
-      <div><strong>Administrador:</strong> <code>admin</code> / <code>admin123</code></div>
+      <div><strong>TENS 1 (Fármacos + QR):</strong> <code>tens</code> / <code>tens123</code></div>
+      <div><strong>TENS AA (Solo Aseo):</strong> <code>AA</code> / <code>AA123</code></div>
+      <div><strong>Administrador (Acceso Total):</strong> <code>admin</code> / <code>admin123</code></div>
     </div>
   </div>
 
@@ -59,6 +60,8 @@
         if (data.success) {
           sessionStorage.setItem('authenticated', 'true');
           sessionStorage.setItem('role', data.role);
+          sessionStorage.setItem('username', data.nombreUsuario || usernameInput);
+          sessionStorage.setItem('userKey', data.userKey || usernameInput);
           window.location.href = 'index.html';
         } else {
           document.getElementById('alert-error').classList.remove('d-none');

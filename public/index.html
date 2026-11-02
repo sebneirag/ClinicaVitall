@@ -14,6 +14,7 @@
     .table-dark-custom { --bs-table-bg: #1e1e1e; --bs-table-border-color: #333; }
     .qr-img { width: 140px; height: 140px; border-radius: 8px; border: 2px solid #444; background-color: #fff; padding: 4px; }
     .admin-only { display: none; }
+    .tens-only { display: inline-block; }
   </style>
 </head>
 <body>
@@ -23,7 +24,9 @@
     <div class="container-fluid">
       <span class="navbar-brand fw-bold fs-4">Clínica Vital SpA <small id="lbl-rol" class="fs-6 text-secondary fw-normal">| Proyecto APT</small></span>
       <div>
-        <button id="btn-reporte" class="btn btn-outline-info btn-sm me-2 admin-only" data-bs-toggle="modal" data-bs-target="#modalReporte">📊 Detalle Consumo Semanal</button>
+        <button id="btn-mensaje-tens" class="btn btn-outline-warning btn-sm me-2 tens-only" data-bs-toggle="modal" data-bs-target="#modalMensajeTens">📩 Enviar Sugerencia / Avisar Falta</button>
+        <button id="btn-supervision" class="btn btn-warning btn-sm fw-bold me-2 admin-only" data-bs-toggle="modal" data-bs-target="#modalSupervision">🛡️ Panel de Supervisión y Cobros</button>
+        <button id="btn-reporte" class="btn btn-outline-info btn-sm me-2 admin-only" data-bs-toggle="modal" data-bs-target="#modalReporte">📊 Consumo Semanal Valorizado</button>
         <button id="btn-logout" class="btn btn-outline-danger btn-sm">Cerrar Sesión</button>
       </div>
     </div>
@@ -31,7 +34,6 @@
 
   <div class="container pb-5">
 
-    <!-- Navegación -->
     <ul class="nav nav-tabs mb-4" id="mainTabs" role="tablist">
       <li class="nav-item" role="presentation">
         <button class="nav-link active" id="inventario-tab" data-bs-toggle="tab" data-bs-target="#inventario-pane" type="button" role="tab">📦 Inventario de Insumos</button>
@@ -39,23 +41,22 @@
       <li class="nav-item" role="presentation">
         <button class="nav-link" id="residentes-tab" data-bs-toggle="tab" data-bs-target="#residentes-pane" type="button" role="tab">👥 Personal de Turno del Día</button>
       </li>
-      <li class="nav-item" role="presentation">
-        <button class="nav-link" id="pacientes-tab" data-bs-toggle="tab" data-bs-target="#pacientes-pane" type="button" role="tab">📋 Pacientes y Fichas QR</button>
+      <li class="nav-item" role="presentation" id="pacientes-tab-li">
+        <button class="nav-link" id="pacientes-tab" data-bs-toggle="tab" data-bs-target="#pacientes-pane" type="button" role="tab">📋 Residentes Menores y Fichas QR</button>
       </li>
     </ul>
 
-    <!-- Contenido Principal -->
     <div class="tab-content" id="mainTabsContent">
 
       <!-- Pestaña 1: Inventario -->
       <div class="tab-pane fade show active" id="inventario-pane" role="tabpanel">
 
-        <!-- Tabla 1: Medicamentos -->
-        <div class="card-custom p-4 mb-4">
+        <!-- Sección Medicamentos (Visible para TENS 1, TENS AA y Admin) -->
+        <div id="sec-medicamentos" class="card-custom p-4 mb-4">
           <div class="d-flex justify-content-between align-items-center mb-3">
             <div>
               <h4 class="m-0 text-light fw-bold">💊 Medicamentos Antidepresivos y Psicofármacos</h4>
-              <small class="text-secondary">Descuento de stock en cajas según consumo del turno</small>
+              <small class="text-secondary">Control por pauta. Stock Mínimo Estricto: 10 Cajas</small>
             </div>
             <button class="btn btn-success fw-bold btn-sm px-3 admin-only" data-bs-toggle="modal" data-bs-target="#modalAgregarMedicamento">+ Agregar Medicamento</button>
           </div>
@@ -66,6 +67,7 @@
                 <tr>
                   <th>Producto / Fármaco</th>
                   <th>Stock Actual</th>
+                  <th>Prioridad</th>
                   <th>Pauta de Administración Médica</th>
                   <th class="text-end">Acciones de Uso</th>
                 </tr>
@@ -75,12 +77,12 @@
           </div>
         </div>
 
-        <!-- Tabla 2: Artículos de Aseo -->
-        <div class="card-custom p-4">
+        <!-- Sección Aseo (Visible SOLO para TENS AA y Admin. Oculta para TENS 1) -->
+        <div id="sec-aseo" class="card-custom p-4">
           <div class="d-flex justify-content-between align-items-center mb-3">
             <div>
               <h4 class="m-0 text-light fw-bold">🧹 Artículos de Aseo e Higiene</h4>
-              <small class="text-secondary">Descuento de insumos de limpieza por unidad</small>
+              <small class="text-secondary">Control por prioridad (Alta: 8-10, Media: 6, Baja: 4 unidades)</small>
             </div>
             <button class="btn btn-success fw-bold btn-sm px-3 admin-only" data-bs-toggle="modal" data-bs-target="#modalAgregarAseo">+ Agregar Artículo de Aseo</button>
           </div>
@@ -91,6 +93,7 @@
                 <tr>
                   <th>Artículo de Limpieza</th>
                   <th>Stock Actual</th>
+                  <th>Prioridad</th>
                   <th>Uso y Aplicación</th>
                   <th class="text-end">Acciones de Uso</th>
                 </tr>
@@ -102,7 +105,7 @@
 
       </div>
 
-      <!-- Pestaña 2: Personal y Turnos del Día -->
+      <!-- Pestaña 2: Personal -->
       <div class="tab-pane fade" id="residentes-pane" role="tabpanel">
         <div class="card-custom p-4 mb-4">
           <div class="d-flex justify-content-between align-items-center mb-3">
@@ -131,44 +134,19 @@
         </div>
       </div>
 
-      <!-- Pestaña 3: Residentes y Fichas QR -->
+      <!-- Pestaña 3: Residentes Menores y Fichas QR (Visible para TENS 1 y Admin. Oculta para TENS AA) -->
       <div class="tab-pane fade" id="pacientes-pane" role="tabpanel">
         <div class="card-custom p-4">
-          <h4 class="text-light fw-bold mb-1">📋 Residentes y Fichas Médicas Digitales (QR)</h4>
-          <p class="text-secondary small mb-4">Escanee el código QR desde cualquier celular para ver y descargar la ficha médica del paciente.</p>
-
-          <div class="row g-4">
-            <!-- Residente 1 -->
-            <div class="col-md-6">
-              <div class="p-3 border border-secondary rounded bg-dark d-flex align-items-center justify-content-between">
-                <div>
-                  <h5 class="fw-bold mb-1 text-light">Camila Soto Morales</h5>
-                  <p class="mb-1 text-secondary small"><strong>RUT:</strong> 18.452.120-K | 29 años</p>
-                  <p class="mb-2 text-secondary small"><strong>Diagnóstico:</strong> Trastorno Depresivo Mayor</p>
-                  <a id="link-directo-1" href="#" target="_blank" class="btn btn-outline-light btn-sm">Ver/Descargar Ficha</a>
-                </div>
-                <div class="text-center">
-                  <img id="qr-residente-1" class="qr-img" alt="QR Camila Soto">
-                  <div class="small text-muted mt-1">Escanear QR</div>
-                </div>
-              </div>
+          <div class="d-flex justify-content-between align-items-center mb-3">
+            <div>
+              <h4 class="text-light fw-bold mb-1">📋 Residentes Menores de Edad y Fichas Médicas Digitales (QR)</h4>
+              <p class="text-secondary small mb-0">Escanee el código QR para ver la ficha médica. Las residentes egresan al cumplir los 18 años.</p>
             </div>
+            <button class="btn btn-success fw-bold btn-sm px-3 admin-only" data-bs-toggle="modal" data-bs-target="#modalAgregarPaciente">+ Registrar Nueva Paciente</button>
+          </div>
 
-            <!-- Residente 2 -->
-            <div class="col-md-6">
-              <div class="p-3 border border-secondary rounded bg-dark d-flex align-items-center justify-content-between">
-                <div>
-                  <h5 class="fw-bold mb-1 text-light">Valentina Morales Rojas</h5>
-                  <p class="mb-1 text-secondary small"><strong>RUT:</strong> 19.821.433-2 | 26 años</p>
-                  <p class="mb-2 text-secondary small"><strong>Diagnóstico:</strong> Trastorno Bipolar T-1</p>
-                  <a id="link-directo-2" href="#" target="_blank" class="btn btn-outline-light btn-sm">Ver/Descargar Ficha</a>
-                </div>
-                <div class="text-center">
-                  <img id="qr-residente-2" class="qr-img" alt="QR Valentina Morales">
-                  <div class="small text-muted mt-1">Escanear QR</div>
-                </div>
-              </div>
-            </div>
+          <div class="row g-4" id="pacientes-container">
+            <!-- Cargado dinámicamente desde la BD -->
           </div>
         </div>
       </div>
@@ -176,39 +154,264 @@
     </div>
   </div>
 
-  <!-- Modal Detalle Consumo Semanal (Solo Admin) -->
-  <div class="modal fade" id="modalReporte" tabindex="-1">
+  <!-- Modal Alerta Stock Crítico -->
+  <div class="modal fade" id="modalAlertaStock" tabindex="-1">
     <div class="modal-dialog modal-lg">
-      <div class="modal-content bg-dark text-light border-secondary">
-        <div class="modal-header border-secondary">
-          <h5 class="modal-title fw-bold">📊 Detalle de Consumo Semanal (Consolidado)</h5>
+      <div class="modal-content bg-dark text-light border-danger">
+        <div class="modal-header bg-danger text-white">
+          <h5 class="modal-title fw-bold">⚠️ ALERTA DE STOCK CRÍTICO DE INSUMOS</h5>
           <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
         </div>
         <div class="modal-body">
-          <p class="text-secondary small mb-3">Resumen acumulado de insumos descontados en los últimos 7 días:</p>
-          <div class="table-responsive">
-            <table class="table table-dark table-hover align-middle">
+          <p class="lead fs-6 mb-3 text-warning fw-bold">
+            Atención Administrador: Se han detectado productos en nivel crítico o por debajo de su stock mínimo de seguridad.
+          </p>
+
+          <div class="table-responsive mb-3">
+            <table class="table table-dark table-hover align-middle small">
+              <thead>
+                <tr>
+                  <th>Producto</th>
+                  <th>Estado Stock</th>
+                  <th>Mínimo Requerido</th>
+                  <th>Recomendación Compra</th>
+                  <th>Costo Estimado</th>
+                </tr>
+              </thead>
+              <tbody id="tabla-alerta-stock-body"></tbody>
+            </table>
+          </div>
+
+          <div class="p-3 rounded bg-black border border-warning d-flex justify-content-between align-items-center">
+            <span class="text-secondary fw-bold">Presupuesto Estimado de Reposición Total:</span>
+            <span id="lbl-alerta-presupuesto" class="fs-5 fw-bold text-warning">$0 CLP</span>
+          </div>
+        </div>
+        <div class="modal-footer border-secondary">
+          <button class="btn btn-warning fw-bold" data-bs-dismiss="modal" data-bs-toggle="modal" data-bs-target="#modalSupervision">🛡️ Ir al Panel Completo de Supervisión</button>
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Entendido / Entrar</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal Capa de Supervisión y Presupuesto -->
+  <div class="modal fade" id="modalSupervision" tabindex="-1">
+    <div class="modal-dialog modal-xl">
+      <div class="modal-content bg-dark text-light border-warning">
+        <div class="modal-header border-secondary">
+          <h5 class="modal-title fw-bold text-warning">🛡️ Panel de Supervisión, Cobro por Consumo y Reposición</h5>
+          <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+        </div>
+        <div class="modal-body">
+          <div class="row g-3 mb-4">
+            <div class="col-md-4">
+              <div class="p-3 rounded bg-black border border-info text-center">
+                <small class="text-secondary d-block">Monto Total Consumido (Para Cobro)</small>
+                <h3 id="lbl-super-gasto-consumo" class="fw-bold text-info m-0">$0 CLP</h3>
+              </div>
+            </div>
+            <div class="col-md-4">
+              <div class="p-3 rounded bg-black border border-warning text-center">
+                <small class="text-secondary d-block">Presupuesto Orden de Compra</small>
+                <h3 id="lbl-super-presupuesto" class="fw-bold text-warning m-0">$0 CLP</h3>
+              </div>
+            </div>
+            <div class="col-md-4">
+              <div class="p-3 rounded bg-black border border-danger text-center">
+                <small class="text-secondary d-block">Insumos bajo Stock Mínimo</small>
+                <h3 id="lbl-super-alertas" class="fw-bold text-danger m-0">0 Productos</h3>
+              </div>
+            </div>
+          </div>
+
+          <h6 class="fw-bold text-light mb-2">📋 Detalle de Pedidos Sugeridos y Prioridad por Objeto</h6>
+          <div class="table-responsive mb-4">
+            <table class="table table-dark table-hover align-middle small">
+              <thead>
+                <tr>
+                  <th>Prioridad</th>
+                  <th>Producto</th>
+                  <th>Categoría</th>
+                  <th>Stock / Mínimo</th>
+                  <th>Consumo Semanal</th>
+                  <th>Costo Consumido (Cobro)</th>
+                  <th>Sugerido a Pedir</th>
+                  <th>Costo Reposición</th>
+                </tr>
+              </thead>
+              <tbody id="tabla-supervision-body"></tbody>
+            </table>
+          </div>
+
+          <h6 class="fw-bold text-light mb-2">📩 Mensajes y Sugerencias del Personal TENS</h6>
+          <div class="table-responsive bg-black p-2 rounded border border-secondary" style="max-height: 180px; overflow-y: auto;">
+            <table class="table table-dark table-sm mb-0 small">
+              <thead>
+                <tr>
+                  <th>Fecha</th>
+                  <th>Tipo</th>
+                  <th>Mensaje / Sugerencia</th>
+                  <th>Usuario TENS</th>
+                </tr>
+              </thead>
+              <tbody id="tabla-mensajes-body"></tbody>
+            </table>
+          </div>
+        </div>
+        <div class="modal-footer border-secondary">
+          <button class="btn btn-success fw-bold" onclick="exportarReporteSupervisionCSV()">📥 Exportar Informe a Excel / CSV</button>
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cerrar</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal Enviar Mensaje (TENS) -->
+  <div class="modal fade" id="modalMensajeTens" tabindex="-1">
+    <div class="modal-dialog">
+      <div class="modal-content bg-dark text-light border-warning">
+        <div class="modal-header border-secondary">
+          <h5 class="modal-title fw-bold">📩 Enviar Mensaje / Sugerencia a Jefatura</h5>
+          <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+        </div>
+        <form id="form-mensaje-tens">
+          <div class="modal-body">
+            <div class="mb-3">
+              <label class="form-label text-secondary">Tipo de Notificación</label>
+              <select id="tens-msg-tipo" class="form-select bg-black text-light border-secondary">
+                <option value="Falta Stock / Reposición">⚠️ Notificar Falta de Stock / Mínimo Afectado</option>
+                <option value="Sugerencia Insumo Nuevo">💡 Sugerencia de Producto Nuevo</option>
+                <option value="Otro">📝 Otro Comentario / Aviso de Turno</option>
+              </select>
+            </div>
+            <div class="mb-3">
+              <label class="form-label text-secondary">Detalle del Mensaje</label>
+              <textarea id="tens-msg-texto" class="form-control bg-black text-light border-secondary" rows="4" placeholder="Escriba aquí si falta algún producto o una recomendación..." required></textarea>
+            </div>
+          </div>
+          <div class="modal-footer border-secondary">
+            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+            <button type="submit" class="btn btn-warning fw-bold">Enviar a Jefatura</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal Consumo Semanal -->
+  <div class="modal fade" id="modalReporte" tabindex="-1">
+    <div class="modal-dialog modal-xl">
+      <div class="modal-content bg-dark text-light border-secondary">
+        <div class="modal-header border-secondary">
+          <h5 class="modal-title fw-bold">📊 Detalle de Consumo Semanal Valorizado por TENS</h5>
+          <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+        </div>
+        <div class="modal-body">
+          <div class="table-responsive mb-3">
+            <table class="table table-dark table-hover align-middle small">
               <thead>
                 <tr>
                   <th>Producto</th>
                   <th>Categoría</th>
+                  <th>Usuario / Responsable</th>
                   <th>Total Consumido</th>
+                  <th>Precio Unitario</th>
+                  <th>Costo Consumido (Cobro)</th>
                   <th>Último Registro</th>
                 </tr>
               </thead>
               <tbody id="tabla-reporte-body"></tbody>
             </table>
           </div>
+          <div class="p-3 rounded bg-black border border-info d-flex justify-content-between align-items-center">
+            <span class="text-secondary fw-bold">Monto Total Real Consumido a Cobrar:</span>
+            <span id="lbl-reporte-total-cobro" class="fs-5 fw-bold text-info">$0 CLP</span>
+          </div>
         </div>
         <div class="modal-footer border-secondary">
-          <button class="btn btn-outline-success btn-sm fw-bold" onclick="exportarCSV()">📥 Descargar CSV / Excel</button>
+          <button class="btn btn-outline-success btn-sm fw-bold" onclick="exportarConsumoCSV()">📥 Descargar CSV / Excel</button>
           <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Cerrar</button>
         </div>
       </div>
     </div>
   </div>
 
-  <!-- Modal Agregar Medicamento (Admin) -->
+  <!-- Modal Agregar Paciente (Admin) -->
+  <div class="modal fade" id="modalAgregarPaciente" tabindex="-1">
+    <div class="modal-dialog">
+      <div class="modal-content bg-dark text-light border-success">
+        <div class="modal-header border-secondary">
+          <h5 class="modal-title fw-bold text-success">➕ Registrar Nueva Paciente (Menor de Edad)</h5>
+          <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+        </div>
+        <form id="form-agregar-paciente">
+          <div class="modal-body">
+            <div class="mb-3">
+              <label class="form-label text-secondary">Nombre Completo de la Paciente</label>
+              <input type="text" id="pac-nombre" class="form-control bg-black text-light border-secondary" placeholder="Ej: Sofía Henríquez Silva" required>
+            </div>
+            <div class="mb-3">
+              <label class="form-label text-secondary">RUT</label>
+              <input type="text" id="pac-rut" class="form-control bg-black text-light border-secondary" placeholder="Ej: 21.345.678-9" required>
+            </div>
+            <div class="mb-3">
+              <label class="form-label text-secondary">Edad (Años)</label>
+              <input type="number" id="pac-edad" class="form-control bg-black text-light border-secondary" value="15" min="1" max="17" required>
+              <small class="text-muted">Si la paciente cumple 18 años, debe ser eliminada del sistema por egreso.</small>
+            </div>
+            <div class="mb-3">
+              <label class="form-label text-secondary">Diagnóstico Médico Principal</label>
+              <input type="text" id="pac-diag" class="form-control bg-black text-light border-secondary" placeholder="Ej: Trastorno Ansioso Depresivo" required>
+            </div>
+          </div>
+          <div class="modal-footer border-secondary">
+            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+            <button type="submit" class="btn btn-success fw-bold">Guardar Residente</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal Editar Paciente (Admin) -->
+  <div class="modal fade" id="modalEditarPaciente" tabindex="-1">
+    <div class="modal-dialog">
+      <div class="modal-content bg-dark text-light border-warning">
+        <div class="modal-header border-secondary">
+          <h5 class="modal-title fw-bold text-warning">✏️ Editar Datos de Paciente</h5>
+          <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+        </div>
+        <form id="form-editar-paciente">
+          <input type="hidden" id="edit-pac-id">
+          <div class="modal-body">
+            <div class="mb-3">
+              <label class="form-label text-secondary">Nombre Completo</label>
+              <input type="text" id="edit-pac-nombre" class="form-control bg-black text-light border-secondary" required>
+            </div>
+            <div class="mb-3">
+              <label class="form-label text-secondary">RUT</label>
+              <input type="text" id="edit-pac-rut" class="form-control bg-black text-light border-secondary" required>
+            </div>
+            <div class="mb-3">
+              <label class="form-label text-secondary">Edad (Años)</label>
+              <input type="number" id="edit-pac-edad" class="form-control bg-black text-light border-secondary" min="1" max="18" required>
+            </div>
+            <div class="mb-3">
+              <label class="form-label text-secondary">Diagnóstico Médico</label>
+              <input type="text" id="edit-pac-diag" class="form-control bg-black text-light border-secondary" required>
+            </div>
+          </div>
+          <div class="modal-footer border-secondary">
+            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+            <button type="submit" class="btn btn-warning fw-bold">Guardar Cambios</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modales Adición Inventario Admin -->
   <div class="modal fade" id="modalAgregarMedicamento" tabindex="-1">
     <div class="modal-dialog">
       <div class="modal-content bg-dark text-light border-secondary">
@@ -231,6 +434,10 @@
               <input type="number" id="med-cantidad" class="form-control bg-black text-light border-secondary" value="1" min="1" required>
             </div>
             <div class="mb-3">
+              <label class="form-label text-secondary">Precio Unitario ($ CLP)</label>
+              <input type="number" id="med-precio" class="form-control bg-black text-light border-secondary" value="8500" min="0">
+            </div>
+            <div class="mb-3">
               <label class="form-label text-secondary">Pauta Horaria</label>
               <input type="text" id="med-pauta" class="form-control bg-black text-light border-secondary" value="Mañana: 1, Tarde: 0, Noche: 1 (sueño), SOS: 1">
             </div>
@@ -244,7 +451,6 @@
     </div>
   </div>
 
-  <!-- Modal Agregar Aseo (Admin) -->
   <div class="modal fade" id="modalAgregarAseo" tabindex="-1">
     <div class="modal-dialog">
       <div class="modal-content bg-dark text-light border-secondary">
@@ -265,6 +471,10 @@
             <div class="mb-3">
               <label class="form-label text-secondary">Cantidad a Sumar</label>
               <input type="number" id="aseo-cantidad" class="form-control bg-black text-light border-secondary" value="1" min="1" required>
+            </div>
+            <div class="mb-3">
+              <label class="form-label text-secondary">Precio Unitario ($ CLP)</label>
+              <input type="number" id="aseo-precio" class="form-control bg-black text-light border-secondary" value="5000" min="0">
             </div>
             <div class="mb-3">
               <label class="form-label text-secondary">Uso y Aplicación</label>
