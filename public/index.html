@@ -12,7 +12,7 @@
     .nav-tabs .nav-link.active { color: #fff; background-color: #2b2b2b; border-bottom: 2px solid #fff; font-weight: bold; }
     .card-custom { background-color: #1e1e1e; border: 1px solid #333; border-radius: 8px; }
     .table-dark-custom { --bs-table-bg: #1e1e1e; --bs-table-border-color: #333; }
-    .qr-img { width: 140px; height: 140px; border-radius: 8px; border: 2px solid #444; background-color: #fff; padding: 4px; }
+    .qr-img { width: 130px; height: 130px; border-radius: 8px; border: 2px solid #444; background-color: #fff; padding: 4px; }
     .admin-only { display: none; }
     .tens-only { display: inline-block; }
   </style>
@@ -51,7 +51,7 @@
       <!-- Pestaña 1: Inventario -->
       <div class="tab-pane fade show active" id="inventario-pane" role="tabpanel">
 
-        <!-- Sección Medicamentos (Visible para TENS 1, TENS AA y Admin) -->
+        <!-- Sección Medicamentos (TENS 1 y Admin) -->
         <div id="sec-medicamentos" class="card-custom p-4 mb-4">
           <div class="d-flex justify-content-between align-items-center mb-3">
             <div>
@@ -77,7 +77,7 @@
           </div>
         </div>
 
-        <!-- Sección Aseo (Visible SOLO para TENS AA y Admin. Oculta para TENS 1) -->
+        <!-- Sección Aseo (TENS AA y Admin) -->
         <div id="sec-aseo" class="card-custom p-4">
           <div class="d-flex justify-content-between align-items-center mb-3">
             <div>
@@ -134,19 +134,19 @@
         </div>
       </div>
 
-      <!-- Pestaña 3: Residentes Menores y Fichas QR (Visible para TENS 1 y Admin. Oculta para TENS AA) -->
+      <!-- Pestaña 3: Residentes y QR (TENS 1 y Admin) -->
       <div class="tab-pane fade" id="pacientes-pane" role="tabpanel">
         <div class="card-custom p-4">
           <div class="d-flex justify-content-between align-items-center mb-3">
             <div>
-              <h4 class="text-light fw-bold mb-1">📋 Residentes Menores de Edad y Fichas Médicas Digitales (QR)</h4>
-              <p class="text-secondary small mb-0">Escanee el código QR para ver la ficha médica. Las residentes egresan al cumplir los 18 años.</p>
+              <h4 class="text-light fw-bold mb-1">📋 Residentes Menores y Fichas Digitales (Escaneo QR)</h4>
+              <p class="text-secondary small mb-0">Escanee la imagen QR desde la cámara del celular para desplegar la ficha clínica oficial.</p>
             </div>
             <button class="btn btn-success fw-bold btn-sm px-3 admin-only" data-bs-toggle="modal" data-bs-target="#modalAgregarPaciente">+ Registrar Nueva Paciente</button>
           </div>
 
           <div class="row g-4" id="pacientes-container">
-            <!-- Cargado dinámicamente desde la BD -->
+            <!-- Cargado dinámicamente -->
           </div>
         </div>
       </div>
@@ -267,7 +267,7 @@
     </div>
   </div>
 
-  <!-- Modal Enviar Mensaje (TENS) -->
+  <!-- Modal Enviar Mensaje -->
   <div class="modal fade" id="modalMensajeTens" tabindex="-1">
     <div class="modal-dialog">
       <div class="modal-content bg-dark text-light border-warning">
@@ -337,18 +337,18 @@
     </div>
   </div>
 
-  <!-- Modal Agregar Paciente (Admin) -->
+  <!-- Modal Agregar Paciente (Apuntando a public/images/) -->
   <div class="modal fade" id="modalAgregarPaciente" tabindex="-1">
     <div class="modal-dialog">
       <div class="modal-content bg-dark text-light border-success">
         <div class="modal-header border-secondary">
-          <h5 class="modal-title fw-bold text-success">➕ Registrar Nueva Paciente (Menor de Edad)</h5>
+          <h5 class="modal-title fw-bold text-success">➕ Registrar Nueva Paciente</h5>
           <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
         </div>
         <form id="form-agregar-paciente">
           <div class="modal-body">
             <div class="mb-3">
-              <label class="form-label text-secondary">Nombre Completo de la Paciente</label>
+              <label class="form-label text-secondary">Nombre Completo</label>
               <input type="text" id="pac-nombre" class="form-control bg-black text-light border-secondary" placeholder="Ej: Sofía Henríquez Silva" required>
             </div>
             <div class="mb-3">
@@ -358,11 +358,15 @@
             <div class="mb-3">
               <label class="form-label text-secondary">Edad (Años)</label>
               <input type="number" id="pac-edad" class="form-control bg-black text-light border-secondary" value="15" min="1" max="17" required>
-              <small class="text-muted">Si la paciente cumple 18 años, debe ser eliminada del sistema por egreso.</small>
             </div>
             <div class="mb-3">
               <label class="form-label text-secondary">Diagnóstico Médico Principal</label>
               <input type="text" id="pac-diag" class="form-control bg-black text-light border-secondary" placeholder="Ej: Trastorno Ansioso Depresivo" required>
+            </div>
+            <div class="mb-3">
+              <label class="form-label text-secondary">Nombre del Archivo de Imagen (en public/images/)</label>
+              <input type="text" id="pac-foto" class="form-control bg-black text-light border-secondary" placeholder="Ej: ficha3.png (o dejar en blanco para ficha1.png)">
+              <small class="text-muted">Guarde la imagen dentro de la carpeta <code>public/images/</code>.</small>
             </div>
           </div>
           <div class="modal-footer border-secondary">
@@ -374,7 +378,7 @@
     </div>
   </div>
 
-  <!-- Modal Editar Paciente (Admin) -->
+  <!-- Modal Editar Paciente -->
   <div class="modal fade" id="modalEditarPaciente" tabindex="-1">
     <div class="modal-dialog">
       <div class="modal-content bg-dark text-light border-warning">
@@ -401,6 +405,10 @@
               <label class="form-label text-secondary">Diagnóstico Médico</label>
               <input type="text" id="edit-pac-diag" class="form-control bg-black text-light border-secondary" required>
             </div>
+            <div class="mb-3">
+              <label class="form-label text-secondary">Nombre del Archivo de Imagen</label>
+              <input type="text" id="edit-pac-foto" class="form-control bg-black text-light border-secondary">
+            </div>
           </div>
           <div class="modal-footer border-secondary">
             <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
@@ -411,7 +419,7 @@
     </div>
   </div>
 
-  <!-- Modales Adición Inventario Admin -->
+  <!-- Modales Adición Inventario -->
   <div class="modal fade" id="modalAgregarMedicamento" tabindex="-1">
     <div class="modal-dialog">
       <div class="modal-content bg-dark text-light border-secondary">

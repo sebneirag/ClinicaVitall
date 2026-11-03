@@ -73,7 +73,6 @@ function inicializarBD() {
         stmt.run('Toallas de Papel (Paquete 8 rollos)', 13, 'aseo', 'Secado e higiene rápida', 4200, 4, 12, 'Baja', 0);
 
         stmt.finalize();
-        console.log('Catálogo inicial cargado.');
       }
     });
   });
@@ -128,7 +127,7 @@ function inicializarBD() {
     )
   `);
 
-  // 5. Tabla Pacientes (Menores de Edad)
+  // 5. Tabla Pacientes (Creación y Migración Preventiva)
   db.run(`
     CREATE TABLE IF NOT EXISTS pacientes (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -136,16 +135,21 @@ function inicializarBD() {
       rut TEXT NOT NULL,
       edad INTEGER NOT NULL,
       diagnostico TEXT NOT NULL,
+      imagen_ficha TEXT DEFAULT 'ficha1.png',
       fecha_ingreso TIMESTAMP DEFAULT CURRENT_TIMESTAMP
     )
   `, () => {
+    db.run("ALTER TABLE pacientes ADD COLUMN imagen_ficha TEXT DEFAULT 'ficha1.png'", () => {});
+
     db.get('SELECT COUNT(*) as total FROM pacientes', (err, row) => {
       if (row && row.total === 0) {
-        const stmt = db.prepare('INSERT INTO pacientes (nombre, rut, edad, diagnostico) VALUES (?, ?, ?, ?)');
-        stmt.run('Camila Soto Morales', '18.452.120-K', 16, 'Trastorno Depresivo Mayor');
-        stmt.run('Valentina Morales Rojas', '19.821.433-2', 17, 'Trastorno Bipolar T-1');
+        const stmt = db.prepare('INSERT INTO pacientes (nombre, rut, edad, diagnostico, imagen_ficha) VALUES (?, ?, ?, ?, ?)');
+        stmt.run('Camila Soto Morales', '18.452.120-K', 16, 'Trastorno Depresivo Mayor', 'ficha1.png');
+        stmt.run('Valentina Morales Rojas', '19.821.433-2', 17, 'Trastorno Bipolar T-1', 'ficha2.png');
+        stmt.run('Sofía Henríquez Silva', '20.123.456-7', 15, 'Trastorno Ansioso Depresivo', 'ficha3.png');
+        stmt.run('Isidora Tapia Fuentes', '21.987.654-3', 16, 'Trastorno Adaptativo Severo', 'ficha4.png');
         stmt.finalize();
-        console.log('Pacientes menores iniciales cargadas.');
+        console.log('4 Pacientes iniciales creadas en base de datos.');
       }
     });
   });
@@ -156,7 +160,135 @@ app.get('/api/config', (req, res) => {
   res.json({ ip: LOCAL_IP, port: PORT });
 });
 
-// Inventario
+// APIs Pacientes (CRUD)
+app.get('/api/pacientes', (req, res) => {
+  db.all('SELECT * FROM pacientes ORDER BY id ASC', [], (err, rows) => {
+    if (err) return res.status(500).json({ error: err.message });
+    res.json(rows);
+  });
+});
+
+app.post('/api/pacientes', (req, res) => {
+  const { nombre, rut, edad, diagnostico, imagen_ficha } = req.body;
+  if (!nombre || !rut || !edad) {
+    return res.status(400).json({ error: 'Faltan datos obligatorios del residente.' });
+  }
+
+  const imgFinal = (imagen_ficha && imagen_ficha.trim()) ? imagen_ficha.trim() : 'ficha1.png';
+
+  db.run(
+    'INSERT INTO pacientes (nombre, rut, edad, diagnostico, imagen_ficha) VALUES (?, ?, ?, ?, ?)',
+    [nombre.trim(), rut.trim(), parseInt(edad, 10), (diagnostico || 'Evaluación General').trim(), imgFinal],
+    function(err) {
+      if (err) return res.status(500).json({ error: err.message });
+      res.json({ success: true, id: this.lastID });
+    }
+  );
+});
+
+app.put('/api/pacientes/:id', (req, res) => {
+  const { id } = req.params;
+  const { nombre, rut, edad, diagnostico, imagen_ficha } = req.body;
+  const imgFinal = (imagen_ficha && imagen_ficha.trim()) ? imagen_ficha.trim() : 'ficha1.png';
+
+  db.run(
+    'UPDATE pacientes SET nombre = ?, rut = ?, edad = ?, diagnostico = ?, imagen_ficha = ? WHERE id = ?',
+    [nombre.trim(), rut.trim(), parseInt(edad, 10), (diagnostico || 'Evaluación General').trim(), imgFinal, id],
+    function(err) {
+      if (err) return res.status(500).json({ error: err.message });
+      res.json({ success: true });
+    }
+  );
+});
+
+app.delete('/api/pacientes/:id', (req, res) => {
+  const { id } = req.params;
+  db.run('DELETE FROM pacientes WHERE id = ?', [id], function(err) {
+    if (err) return res.status(500).json({ error: err.message });
+    res.json({ success: true });
+  });
+});
+
+// VISTA COMPLETA AL ESCANEAR EL QR: Muestra la Ficha Gráfica y Opciones de Descarga
+app.get('/ficha/:id', (req, res) => {
+  const id = req.params.id;
+  db.get('SELECT * FROM pacientes WHERE id = ?', [id], (err, paciente) => {
+    if (err || !paciente) {
+      return res.status(404).send(`
+        <!DOCTYPE html>
+        <html lang="es"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>Ficha No Encontrada</title>
+        <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+        </head><body class="bg-dark text-light text-center p-5">
+          <h3>⚠️ Ficha Clínica No Encontrada</h3>
+          <p class="text-secondary">El código QR escaneado no pertenece a una paciente activa o ha sido dada de alta.</p>
+        </body></html>
+      `);
+    }
+
+    const archivoImagen = paciente.imagen_ficha ? paciente.imagen_ficha : 'ficha1.png';
+    const rutaImagen = `/images/${archivoImagen}`;
+
+    const html = `
+      <!DOCTYPE html>
+      <html lang="es">
+      <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>Ficha Clínica Digital - ${paciente.nombre}</title>
+        <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+        <style>
+          body { background-color: #0f172a; color: #f8fafc; padding: 15px; font-family: system-ui, -apple-system, sans-serif; }
+          .card-ficha { background-color: #1e293b; border: 1px solid #334155; border-radius: 14px; padding: 20px; margin: 0 auto; max-width: 650px; text-align: left; }
+          .badge-clinica { background-color: #0284c7; color: #fff; font-size: 0.85rem; padding: 6px 14px; border-radius: 20px; font-weight: bold; }
+          .img-ficha { width: 100%; border-radius: 10px; border: 2px solid #475569; background-color: #0f172a; }
+        </style>
+      </head>
+      <body>
+        <div class="container my-2">
+          <div class="card-ficha shadow-lg">
+            <div class="d-flex justify-content-between align-items-center mb-3">
+              <span class="badge-clinica">📋 CLÍNICA VITAL SpA — FICHA CLÍNICA DIGITAL</span>
+              <span class="badge bg-success">Residente Activa</span>
+            </div>
+
+            <h3 class="fw-bold text-light mb-1">${paciente.nombre}</h3>
+            <p class="text-info small mb-3">
+              <strong>RUT:</strong> ${paciente.rut} &nbsp;|&nbsp; 
+              <strong>Edad:</strong> ${paciente.edad} Años &nbsp;|&nbsp; 
+              <strong>Diagnóstico:</strong> <span class="text-warning fw-bold">${paciente.diagnostico}</span>
+            </p>
+
+            <div class="mb-3 text-center">
+              <img src="${rutaImagen}" onerror="this.src='/images/ficha1.png'" class="img-ficha shadow" alt="Ficha Clínica de ${paciente.nombre}">
+            </div>
+
+            <div class="row g-2">
+              <div class="col-6">
+                <a href="${rutaImagen}" download="${paciente.nombre.replace(/\s+/g, '_')}_Ficha.png" class="btn btn-success w-100 fw-bold py-2">
+                  📥 Descargar Ficha
+                </a>
+              </div>
+              <div class="col-6">
+                <a href="${rutaImagen}" target="_blank" class="btn btn-outline-info w-100 fw-bold py-2">
+                  🔍 Ver Imagen HD
+                </a>
+              </div>
+            </div>
+
+            <div class="mt-3 text-center">
+              <button onclick="window.print()" class="btn btn-secondary btn-sm w-100">🖨️ Imprimir Documento</button>
+            </div>
+          </div>
+        </div>
+      </body>
+      </html>
+    `;
+    res.send(html);
+  });
+});
+
+// APIs Complementarias de Inventario, Supervisión, Consumo y Login
 app.get('/api/inventario', (req, res) => {
   db.all('SELECT * FROM inventario ORDER BY id ASC', [], (err, rows) => {
     if (err) return res.status(500).json({ error: err.message });
@@ -182,10 +314,7 @@ app.post('/api/inventario/usar', (req, res) => {
       db.run(
         'INSERT INTO historial_consumo (producto_nombre, categoria, cantidad, usuario) VALUES (?, ?, ?, ?)',
         [producto.nombre.trim(), producto.categoria, cantNum, user],
-        (err) => {
-          if (err) console.error('Error registrando historial:', err.message);
-          res.json({ success: true, stockRestante: producto.stock - cantNum });
-        }
+        () => res.json({ success: true, stockRestante: producto.stock - cantNum })
       );
     });
   });
@@ -199,34 +328,25 @@ app.post('/api/inventario/agregar', (req, res) => {
   
   const defaultMin = categoria === 'medicamento' ? 10 : (prioridad === 'Alta' ? 8 : prioridad === 'Media' ? 6 : 4);
   const defaultMax = categoria === 'medicamento' ? 20 : 15;
-  
   const minStock = parseInt(stock_minimo, 10) || defaultMin;
   const maxStock = parseInt(stock_maximo, 10) || defaultMax;
-  const prio = prioridad || 'Media';
-  const sosVal = es_sos ? 1 : 0;
 
   db.get('SELECT * FROM inventario WHERE LOWER(TRIM(nombre)) = LOWER(?)', [nomLimpio], (err, row) => {
     if (err) return res.status(500).json({ error: err.message });
 
     if (row) {
       db.run(
-        `UPDATE inventario SET 
-          stock = stock + ?, 
-          pauta = CASE WHEN ? != "" THEN ? ELSE pauta END,
-          precio_unitario = CASE WHEN ? > 0 THEN ? ELSE precio_unitario END
-         WHERE id = ?`,
+        `UPDATE inventario SET stock = stock + ?, pauta = CASE WHEN ? != "" THEN ? ELSE pauta END, precio_unitario = CASE WHEN ? > 0 THEN ? ELSE precio_unitario END WHERE id = ?`,
         [cantNum, (pauta || '').trim(), (pauta || '').trim(), precio, precio, row.id],
-        function(err) {
+        (err) => {
           if (err) return res.status(500).json({ error: err.message });
           res.json({ success: true, action: 'updated' });
         }
       );
     } else {
       db.run(
-        `INSERT INTO inventario 
-        (nombre, stock, categoria, pauta, precio_unitario, stock_minimo, stock_maximo, prioridad, es_sos) 
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-        [nomLimpio, cantNum, categoria, pauta || 'N/A', precio, minStock, maxStock, prio, sosVal],
+        `INSERT INTO inventario (nombre, stock, categoria, pauta, precio_unitario, stock_minimo, stock_maximo, prioridad, es_sos) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        [nomLimpio, cantNum, categoria, pauta || 'N/A', precio, minStock, maxStock, prioridad || 'Media', es_sos ? 1 : 0],
         function(err) {
           if (err) return res.status(500).json({ error: err.message });
           res.json({ success: true, action: 'inserted', id: this.lastID });
@@ -236,135 +356,21 @@ app.post('/api/inventario/agregar', (req, res) => {
   });
 });
 
-// APIs Pacientes (CRUD)
-app.get('/api/pacientes', (req, res) => {
-  db.all('SELECT * FROM pacientes ORDER BY id ASC', [], (err, rows) => {
-    if (err) return res.status(500).json({ error: err.message });
-    res.json(rows);
-  });
-});
-
-app.post('/api/pacientes', (req, res) => {
-  const { nombre, rut, edad, diagnostico } = req.body;
-  if (!nombre || !rut || !edad) {
-    return res.status(400).json({ error: 'Faltan datos obligatorios del residente.' });
-  }
-
-  db.run(
-    'INSERT INTO pacientes (nombre, rut, edad, diagnostico) VALUES (?, ?, ?, ?)',
-    [nombre.trim(), rut.trim(), parseInt(edad, 10), (diagnostico || 'Evaluación General').trim()],
-    function(err) {
-      if (err) return res.status(500).json({ error: err.message });
-      res.json({ success: true, id: this.lastID });
-    }
-  );
-});
-
-app.put('/api/pacientes/:id', (req, res) => {
-  const { id } = req.params;
-  const { nombre, rut, edad, diagnostico } = req.body;
-
-  db.run(
-    'UPDATE pacientes SET nombre = ?, rut = ?, edad = ?, diagnostico = ? WHERE id = ?',
-    [nombre.trim(), rut.trim(), parseInt(edad, 10), (diagnostico || 'Evaluación General').trim(), id],
-    function(err) {
-      if (err) return res.status(500).json({ error: err.message });
-      res.json({ success: true });
-    }
-  );
-});
-
-app.delete('/api/pacientes/:id', (req, res) => {
-  const { id } = req.params;
-  db.run('DELETE FROM pacientes WHERE id = ?', [id], function(err) {
-    if (err) return res.status(500).json({ error: err.message });
-    res.json({ success: true });
-  });
-});
-
-// Ficha Médica Pública Dinámica por ID de Paciente
-app.get('/ficha/:id', (req, res) => {
-  const id = req.params.id;
-  db.get('SELECT * FROM pacientes WHERE id = ?', [id], (err, paciente) => {
-    if (err || !paciente) {
-      return res.status(404).send('<h2 style="color:white;background:#121212;padding:20px;text-align:center;">Ficha Médica no encontrada o paciente egresada.</h2>');
-    }
-
-    const html = `
-      <!DOCTYPE html>
-      <html lang="es">
-      <head>
-        <meta charset="UTF-8">
-        <meta name="viewport" content="width=device-width, initial-scale=1.0">
-        <title>Ficha Médica - ${paciente.nombre}</title>
-        <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
-        <style>
-          body { background-color: #121212; color: #ffffff; text-align: center; padding: 20px; font-family: system-ui; }
-          .card-ficha { background-color: #1e1e1e; border: 1px solid #333; border-radius: 12px; padding: 25px; margin: 0 auto; max-width: 500px; text-align: left; }
-          .badge-clinica { background-color: #198754; color: #fff; font-size: 0.9rem; padding: 8px 15px; border-radius: 20px; }
-          .btn-descarga { background-color: #0d6efd; color: #fff; font-size: 1rem; border-radius: 30px; font-weight: bold; padding: 12px 20px; text-decoration: none; display: block; text-align: center; }
-        </style>
-      </head>
-      <body>
-        <div class="container my-3">
-          <span class="badge-clinica mb-3 d-inline-block">Clínica Vital SpA - Residencia de Menores</span>
-          
-          <div class="card-ficha shadow-lg">
-            <h3 class="fw-bold text-light mb-1">${paciente.nombre}</h3>
-            <p class="text-info fw-bold mb-3">RUT: ${paciente.rut} | ${paciente.edad} Años (Menor de Edad)</p>
-            
-            <hr class="border-secondary">
-            <div class="mb-3">
-              <strong class="text-secondary d-block">Diagnóstico Clínico Principal:</strong>
-              <span class="fs-6 text-warning fw-bold">${paciente.diagnostico}</span>
-            </div>
-
-            <div class="mb-3">
-              <strong class="text-secondary d-block">Estado de Residencia:</strong>
-              <span class="badge bg-success">Activa en Residencia Estacional</span>
-            </div>
-
-            <div class="mb-4">
-              <strong class="text-secondary d-block">Aviso Legal de Permanencia:</strong>
-              <small class="text-muted">Ficha sujeta a egreso administrativo automático al cumplir la mayoría de edad (18 años).</small>
-            </div>
-
-            <a href="javascript:window.print()" class="btn-descarga shadow">🖨️ Descargar / Imprimir Ficha Médica</a>
-          </div>
-        </div>
-      </body>
-      </html>
-    `;
-    res.send(html);
-  });
-});
-
-// Capa de Supervisión
 app.get('/api/supervision/reorden', (req, res) => {
   const sql = `
     SELECT 
       i.*,
       COALESCE(c.total_consumido, 0) AS consumo_semanal,
       (COALESCE(c.total_consumido, 0) * i.precio_unitario) AS costo_consumo_semanal,
-      CASE 
-        WHEN i.stock <= i.stock_minimo THEN (i.stock_maximo - i.stock)
-        ELSE 0 
-      END AS cantidad_a_pedir,
-      CASE 
-        WHEN i.stock <= i.stock_minimo THEN ((i.stock_maximo - i.stock) * i.precio_unitario)
-        ELSE 0 
-      END AS costo_total_estimado
+      CASE WHEN i.stock <= i.stock_minimo THEN (i.stock_maximo - i.stock) ELSE 0 END AS cantidad_a_pedir,
+      CASE WHEN i.stock <= i.stock_minimo THEN ((i.stock_maximo - i.stock) * i.precio_unitario) ELSE 0 END AS costo_total_estimado
     FROM inventario i
     LEFT JOIN (
       SELECT LOWER(TRIM(producto_nombre)) as nom, SUM(cantidad) as total_consumido
-      FROM historial_consumo
-      WHERE fecha >= datetime('now', '-7 days')
+      FROM historial_consumo WHERE fecha >= datetime('now', '-7 days')
       GROUP BY LOWER(TRIM(producto_nombre))
     ) c ON LOWER(TRIM(i.nombre)) = c.nom
-    ORDER BY 
-      CASE i.prioridad WHEN 'Alta' THEN 1 WHEN 'Media' THEN 2 ELSE 3 END,
-      (i.stock <= i.stock_minimo) DESC,
-      i.nombre ASC
+    ORDER BY CASE i.prioridad WHEN 'Alta' THEN 1 WHEN 'Media' THEN 2 ELSE 3 END, (i.stock <= i.stock_minimo) DESC, i.nombre ASC
   `;
 
   db.all(sql, [], (err, rows) => {
@@ -380,28 +386,15 @@ app.get('/api/supervision/reorden', (req, res) => {
       if (r.stock <= r.stock_minimo) itemsEnAlerta++;
     });
 
-    res.json({
-      resumen: {
-        presupuestoTotal,
-        gastoTotalConsumo,
-        itemsEnAlerta,
-        totalProductos: rows.length
-      },
-      detalles: rows
-    });
+    res.json({ resumen: { presupuestoTotal, gastoTotalConsumo, itemsEnAlerta, totalProductos: rows.length }, detalles: rows });
   });
 });
 
-// Consumo Semanal
 app.get('/api/consumo/semanal', (req, res) => {
   const sql = `
     SELECT 
-       hc.producto_nombre, 
-       hc.categoria, 
-       hc.usuario,
-       SUM(hc.cantidad) as total_consumido, 
-       MAX(datetime(hc.fecha, 'localtime')) as ultima_fecha,
-       COALESCE(i.precio_unitario, 0) as precio_unitario,
+       hc.producto_nombre, hc.categoria, hc.usuario, SUM(hc.cantidad) as total_consumido, 
+       MAX(datetime(hc.fecha, 'localtime')) as ultima_fecha, COALESCE(i.precio_unitario, 0) as precio_unitario,
        (SUM(hc.cantidad) * COALESCE(i.precio_unitario, 0)) as costo_total_consumo
      FROM historial_consumo hc
      LEFT JOIN inventario i ON LOWER(TRIM(hc.producto_nombre)) = LOWER(TRIM(i.nombre))
@@ -412,22 +405,15 @@ app.get('/api/consumo/semanal', (req, res) => {
 
   db.all(sql, [], (err, rows) => {
     if (err) return res.status(500).json({ error: err.message });
-
     let gastoTotalSemanal = 0;
     rows.forEach(r => { gastoTotalSemanal += r.costo_total_consumo; });
-
-    res.json({
-      gastoTotalSemanal,
-      detalles: rows
-    });
+    res.json({ gastoTotalSemanal, detalles: rows });
   });
 });
 
 app.post('/api/mensajes', (req, res) => {
   const { tipo, mensaje, usuario } = req.body;
-  if (!mensaje || !mensaje.trim()) {
-    return res.status(400).json({ error: 'El mensaje no puede estar vacío.' });
-  }
+  if (!mensaje || !mensaje.trim()) return res.status(400).json({ error: 'Mensaje vacío.' });
 
   db.run(
     'INSERT INTO mensajes_tens (tipo, mensaje, usuario) VALUES (?, ?, ?)',
@@ -453,7 +439,6 @@ app.get('/api/personal', (req, res) => {
   });
 });
 
-// Login
 app.post('/api/login', (req, res) => {
   const { username, password } = req.body;
   if (username === 'admin' && password === 'admin123') {
@@ -468,5 +453,5 @@ app.post('/api/login', (req, res) => {
 });
 
 app.listen(PORT, '0.0.0.0', () => {
-  console.log(`Servidor Clínica Vital activo en el puerto ${PORT}`);
+  console.log(`Servidor Clínica Vital activo en puerto ${PORT}`);
 });

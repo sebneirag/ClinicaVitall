@@ -27,7 +27,6 @@ document.getElementById('btn-logout').addEventListener('click', () => {
   window.location.href = 'login.html';
 });
 
-// Lógica de Permisos Estricta por Rol
 function configurarVistaSegunRol() {
   const lblRol = document.getElementById('lbl-rol');
   const secMed = document.getElementById('sec-medicamentos');
@@ -38,28 +37,25 @@ function configurarVistaSegunRol() {
     lblRol.textContent = `| Modo Administrador (${userName})`;
     document.querySelectorAll('.admin-only').forEach(el => el.style.display = 'inline-block');
     document.querySelectorAll('.tens-only').forEach(el => el.style.display = 'none');
-
     if (secMed) secMed.style.display = 'block';
     if (secAseo) secAseo.style.display = 'block';
     if (liPacientes) liPacientes.style.display = 'block';
 
-  } else if (userKey === 'tens') { // TENS 1: Solo Medicamentos + Fichas QR
+  } else if (userKey === 'tens') {
     lblRol.textContent = `| Modo TENS 1 (${userName})`;
     document.querySelectorAll('.admin-only').forEach(el => el.style.display = 'none');
     document.querySelectorAll('.tens-only').forEach(el => el.style.display = 'inline-block');
-
     if (secMed) secMed.style.display = 'block';
     if (secAseo) secAseo.style.display = 'none'; 
     if (liPacientes) liPacientes.style.display = 'block'; 
 
-  } else if (userKey === 'AA') { // TENS AA: Solo Aseo (No ve Medicamentos ni QR)
+  } else if (userKey === 'AA') {
     lblRol.textContent = `| Modo TENS AA (${userName})`;
     document.querySelectorAll('.admin-only').forEach(el => el.style.display = 'none');
     document.querySelectorAll('.tens-only').forEach(el => el.style.display = 'inline-block');
-
-    if (secMed) secMed.style.display = 'none'; // OCULTO MEDICAMENTOS PARA AA
-    if (secAseo) secAseo.style.display = 'block'; // VISIBLE ASEO
-    if (liPacientes) liPacientes.style.display = 'none'; // OCULTO QR
+    if (secMed) secMed.style.display = 'none';
+    if (secAseo) secAseo.style.display = 'block';
+    if (liPacientes) liPacientes.style.display = 'none';
   }
 }
 
@@ -67,11 +63,10 @@ function esMedicamento(item) {
   if (item.categoria && item.categoria.toLowerCase() === 'medicamento') return true;
   if (item.categoria && item.categoria.toLowerCase() === 'aseo') return false;
   const nom = item.nombre.toLowerCase();
-  return nom.includes('mg') || nom.includes('sertralina') || nom.includes('fluoxetina') || 
-         nom.includes('clonazepam') || nom.includes('quetiapina') || nom.includes('escitalopram');
+  return nom.includes('mg') || nom.includes('sertralina') || nom.includes('fluoxetina') || nom.includes('clonazepam') || nom.includes('quetiapina');
 }
 
-// Cargar Residentes Menores de Edad desde BD
+// Cargar Residentes: Vista Limpia y Compacta para el Dashboard
 async function cargarPacientes() {
   try {
     const res = await fetch('/api/pacientes');
@@ -82,7 +77,7 @@ async function cargarPacientes() {
     container.innerHTML = '';
 
     if (lista.length === 0) {
-      container.innerHTML = `<div class="col-12 text-center text-muted py-4">No hay pacientes menores registradas actualmente.</div>`;
+      container.innerHTML = `<div class="col-12 text-center text-muted py-4">No hay pacientes registradas actualmente.</div>`;
       return;
     }
 
@@ -90,30 +85,33 @@ async function cargarPacientes() {
 
     lista.forEach(p => {
       const urlFicha = `${baseUrl}/ficha/${p.id}`;
-      const qrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=160x160&data=${encodeURIComponent(urlFicha)}`;
+      const qrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=180x180&data=${encodeURIComponent(urlFicha)}`;
 
       let adminBtns = '';
       if (userKey === 'admin') {
+        const archivoImagen = p.imagen_ficha || 'ficha1.png';
         adminBtns = `
           <div class="mt-3 pt-2 border-top border-secondary d-flex justify-content-end gap-2">
-            <button class="btn btn-outline-warning btn-sm" onclick="abrirModalEditarPaciente(${p.id}, '${p.nombre}', '${p.rut}', ${p.edad}, '${p.diagnostico}')">✏️ Editar</button>
+            <button class="btn btn-outline-warning btn-sm" onclick="abrirModalEditarPaciente(${p.id}, '${p.nombre}', '${p.rut}', ${p.edad}, '${p.diagnostico}', '${archivoImagen}')">✏️ Editar</button>
             <button class="btn btn-outline-danger btn-sm" onclick="eliminarPaciente(${p.id}, '${p.nombre}')">🗑️ Eliminar (Egreso)</button>
           </div>
         `;
       }
 
+      // Diseño limpio: Solo Datos Principales + Código QR
       container.innerHTML += `
         <div class="col-md-6">
-          <div class="p-3 border border-secondary rounded bg-dark d-flex flex-column justify-content-between h-100">
+          <div class="p-3 border border-secondary rounded bg-dark d-flex flex-column justify-content-between h-100 shadow-sm">
             <div class="d-flex align-items-center justify-content-between">
               <div>
-                <h5 class="fw-bold mb-1 text-light">${p.nombre}</h5>
-                <p class="mb-1 text-secondary small"><strong>RUT:</strong> ${p.rut} | <span class="text-info font-monospace">${p.edad} Años</span></p>
-                <p class="mb-2 text-secondary small"><strong>Diagnóstico:</strong> <span class="text-warning">${p.diagnostico}</span></p>
-                <a href="/ficha/${p.id}" target="_blank" class="btn btn-outline-light btn-sm">Ver/Descargar Ficha</a>
+                <h5 class="fw-bold mb-2 text-light">📋 ${p.nombre}</h5>
+                <p class="mb-1 text-secondary small"><strong>RUT:</strong> ${p.rut} &nbsp;|&nbsp; <span class="text-info font-monospace">${p.edad} Años</span></p>
+                <p class="mb-0 text-secondary small"><strong>Diagnóstico:</strong> <span class="text-warning fw-semibold">${p.diagnostico}</span></p>
               </div>
-              <div class="text-center ms-2">
-                <img src="${qrUrl}" class="qr-img" alt="QR ${p.nombre}">
+              <div class="text-center ms-3">
+                <a href="${urlFicha}" target="_blank" title="Haz clic para abrir la ficha o escanea el QR con tu teléfono">
+                  <img src="${qrUrl}" class="qr-img" alt="QR ${p.nombre}">
+                </a>
                 <div class="small text-muted mt-1">Escanear QR</div>
               </div>
             </div>
@@ -127,18 +125,18 @@ async function cargarPacientes() {
   }
 }
 
-// CRUD Handlers para Pacientes
 document.getElementById('form-agregar-paciente')?.addEventListener('submit', async (e) => {
   e.preventDefault();
   const nombre = document.getElementById('pac-nombre').value;
   const rut = document.getElementById('pac-rut').value;
   const edad = document.getElementById('pac-edad').value;
   const diagnostico = document.getElementById('pac-diag').value;
+  const imagen_ficha = document.getElementById('pac-foto').value;
 
   const res = await fetch('/api/pacientes', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ nombre, rut, edad, diagnostico })
+    body: JSON.stringify({ nombre, rut, edad, diagnostico, imagen_ficha })
   });
 
   const data = await res.json();
@@ -149,12 +147,13 @@ document.getElementById('form-agregar-paciente')?.addEventListener('submit', asy
   }
 });
 
-function abrirModalEditarPaciente(id, nombre, rut, edad, diagnostico) {
+function abrirModalEditarPaciente(id, nombre, rut, edad, diagnostico, imagen_ficha) {
   document.getElementById('edit-pac-id').value = id;
   document.getElementById('edit-pac-nombre').value = nombre;
   document.getElementById('edit-pac-rut').value = rut;
   document.getElementById('edit-pac-edad').value = edad;
   document.getElementById('edit-pac-diag').value = diagnostico;
+  document.getElementById('edit-pac-foto').value = imagen_ficha || 'ficha1.png';
 
   const modal = new bootstrap.Modal(document.getElementById('modalEditarPaciente'));
   modal.show();
@@ -167,11 +166,12 @@ document.getElementById('form-editar-paciente')?.addEventListener('submit', asyn
   const rut = document.getElementById('edit-pac-rut').value;
   const edad = document.getElementById('edit-pac-edad').value;
   const diagnostico = document.getElementById('edit-pac-diag').value;
+  const imagen_ficha = document.getElementById('edit-pac-foto').value;
 
   const res = await fetch(`/api/pacientes/${id}`, {
     method: 'PUT',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ nombre, rut, edad, diagnostico })
+    body: JSON.stringify({ nombre, rut, edad, diagnostico, imagen_ficha })
   });
 
   const data = await res.json();
